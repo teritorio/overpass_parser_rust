@@ -45,6 +45,7 @@ impl Out {
         let st_dump_points = sql_dialect.st_dump_points();
         let st_transform_reverse = sql_dialect.st_transform_reverse("geom", srid);
         let st_asgeojson = sql_dialect.st_asgeojson(&st_transform_reverse, 7);
+        let jsonb_agg = sql_dialect.jsonb_agg();
 
         let meta_fields = if meta {
             ",\n    'timestamp', created,
@@ -71,39 +72,44 @@ impl Out {
         };
 
         let geom_bb_geom = if self.geom.as_ref() == "bb" || self.geom.as_ref() == "geom" {
-            ",
+            format!(
+                ",
     'bounds', CASE osm_type = 'w' OR osm_type = 'r'
-      WHEN true THEN {json_build_object}(
+    WHEN true THEN {json_build_object}(
         'minlon', ST_XMin(ST_Envelope({st_transform_reverse}))::numeric,
         'minlat', ST_YMin(ST_Envelope({st_transform_reverse}))::numeric,
         'maxlon', ST_XMax(ST_Envelope({st_transform_reverse}))::numeric,
         'maxlat', ST_YMax(ST_Envelope({st_transform_reverse}))::numeric
       )
     END"
+            )
         } else {
-            ""
+            "".to_string()
         };
         let geom = if self.geom.as_ref() == "geom" {
             let a = ",
-     'geometry', CASE osm_type
-      WHEN 'w' THEN ";
+    'geometry', CASE osm_type
+        WHEN 'w' THEN ";
 
             let w = if st_dump_points.is_some() {
-                "(SELECT \
-#{sql_dialect.jsonb_agg}({json_build_object}(\
+                let st_dump_points = st_dump_points.unwrap();
+                format!(
+                    "(SELECT \
+{jsonb_agg}({json_build_object}(\
 'lon', ST_X({st_transform_reverse})::numeric, \
 'lat', ST_Y({st_transform_reverse})::numeric)) \
-FROM {st_dump_points}(geom))"
-                    .to_string()
+FROM {st_dump_points}(geom))",
+                )
+                .to_string()
             } else {
                 format!(
-                    ",
-    replace(replace(replace(replace(replace((
-        CASE ST_GeometryType(geom)
-        WHEN 'LINESTRING' THEN {st_asgeojson}->'coordinates'
-        ELSE {st_asgeojson}->'coordinates'->0
-        END
-      )::text, {}",
+                    "
+        replace(replace(replace(replace(replace((
+            CASE ST_GeometryType(geom)
+            WHEN 'LINESTRING' THEN {st_asgeojson}->'coordinates'
+            ELSE {st_asgeojson}->'coordinates'->0
+            END
+        )::text, {}",
                     " '[', '{\"lon\":'), \
 ',', ',\"lat\":'), \
 '{\"lon\":{\"lon\":', '[{\"lon\":'), \
@@ -111,7 +117,10 @@ FROM {st_dump_points}(geom))"
 ']]', '}]')::json"
                 )
             };
-            format!("{a}{w}")
+            format!(
+                "{a}{w}
+    END"
+            )
         } else {
             "".to_string()
         };
