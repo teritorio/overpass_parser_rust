@@ -47,4 +47,4 @@ out_geom = { "geom" | "center" | "bb" }
 out_level_of_details = { "ids" | "skel" | "body" | "tags" | "meta" }
 out = { "out" ~ out_geom? ~ out_level_of_details? }
 
-request = { (metadata ~ ";" )? ~ ( query_sequence ~ ";" )+ ~ ( out ~ ";" )? }
+request = { (WHITESPACE | COMMENT)* ~ (metadata ~ ";" )? ~ ( query_sequence ~ ";" )+ ~ ( out ~ ";" )? }

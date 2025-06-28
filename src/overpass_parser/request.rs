@@ -164,6 +164,7 @@ mod tests {
             Try it out by pressing the Run button above!
             You can find more examples with the Load tool.
             */
+            [out:json];
             node
                 [\"amenity\"=\"drinking_water\"]
                 [!loop]
