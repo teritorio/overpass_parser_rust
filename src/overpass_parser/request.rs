@@ -139,3 +139,50 @@ FROM
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{overpass_parser::parse_query, sql_dialect::postgres::postgres::Postgres};
+
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        let queries = [
+            //
+            // Spaces
+            "
+            node
+
+            ;",
+            //
+            // Overpasstube wirazrd
+            "// @name Drinking Water
+
+            /*
+            This is an example Overpass query.
+            Try it out by pressing the Run button above!
+            You can find more examples with the Load tool.
+            */
+            node
+                [\"amenity\"=\"drinking_water\"]
+                [!loop]
+                [foo~\"bar|baz\"]
+                (1, 2, 3, 4);
+            out;",
+        ];
+        queries.map(|query| {
+            match parse_query(query) {
+                Ok(request) => {
+                    let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+                    let sql = request.to_sql(&d, "4326", None);
+                    assert_ne!("", sql);
+                }
+                Err(e) => {
+                    println!("Error parsing query: {}", e);
+                    panic!("Parsing fails");
+                }
+            };
+        });
+    }
+}

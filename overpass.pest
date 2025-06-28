@@ -14,7 +14,7 @@ QUOTED_STRING = _{ SIMPLE_QUOTED_STRING | DOUBLE_QUOTED_STRING }
 ID = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "-" | "_")* }
 DOT_ID = _{ "." ~ ID }
 
-token = { SIMPLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING | number }
+STRING = { SIMPLE_QUOTED_STRING | DOUBLE_QUOTED_STRING | UNQUOTED_STRING | number }
 osm_id = { INTEGER }
 number = { FLOAT | INTEGER }
 
@@ -22,7 +22,7 @@ metadata = { "[" ~ "out:json" ~ "]" ~ ( "[" ~ "timeout:" ~ number ~ "]" )? }
 
 selector = { "[" ~ not? ~ key ~ (operator ~ value)? ~ "]" }
 not = { "!" }
-key = @{ (ASCII_ALPHANUMERIC | "_" | ":" | "-")+ }
+key = @{ (STRING | "_" | ":" | "-")+ }
 value = @{ (!"]" ~ ANY)+ }
 
 filter_bbox = { number ~ "," ~ number ~ "," ~ number ~ "," ~ number }

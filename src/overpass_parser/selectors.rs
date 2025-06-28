@@ -21,6 +21,16 @@ pub struct Selector {
 }
 
 impl Selector {
+    fn unquote(value: &str) -> &str {
+        if (value.starts_with('"') && value.ends_with('"'))
+            || (value.starts_with('\'') && value.ends_with('\''))
+        {
+            &value[1..value.len() - 1]
+        } else {
+            value
+        }
+    }
+
     pub fn from_pest(pair: Pair<Rule>) -> Result<Self, pest::error::Error<Rule>> {
         let mut selector = Selector::default();
         for inner_pair in pair.into_inner() {
@@ -29,18 +39,13 @@ impl Selector {
                     selector.not = inner_pair.as_str() == "!";
                 }
                 Rule::key => {
-                    selector.key = inner_pair.as_str().into();
+                    selector.key = Self::unquote(inner_pair.as_str()).into();
                 }
                 Rule::operator => {
                     selector.operator = Some(inner_pair.as_str().into());
                 }
                 Rule::value => {
-                    let mut value = inner_pair.as_str();
-                    if (value.starts_with('"') && value.ends_with('"'))
-                        || (value.starts_with('\'') && value.ends_with('\''))
-                    {
-                        value = &value[1..value.len() - 1]
-                    }
+                    let value = Self::unquote(inner_pair.as_str());
                     let operator = selector.operator.as_deref().unwrap();
                     if operator == "~" || operator == "!~" {
                         selector.value_regex = Regex::new(value).ok();
@@ -207,7 +212,9 @@ mod tests {
 
     use crate::{
         overpass_parser::{parse_query, request::QueryType},
-        sql_dialect::{postgres::postgres::Postgres, sql_dialect::SqlDialect},
+        sql_dialect::{
+            duckdb::duckdb::Duckdb, postgres::postgres::Postgres, sql_dialect::SqlDialect,
+        },
     };
 
     use super::Selectors;
@@ -301,9 +308,14 @@ mod tests {
     fn test_matches_to_sql() {
         let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
 
-        assert_eq!(parse("[amenity]").to_sql(&d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(&d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(&d, "4326"), "tags?'amenity'");
         assert_eq!(
             parse("[shop=florist]").to_sql(&d, "4326"),
+            "(tags?'shop' AND tags->>'shop' = 'florist')"
+        );
+        assert_eq!(
+            parse("[shop=\"florist\"]").to_sql(&d, "4326"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
         assert_eq!(
@@ -315,6 +327,24 @@ mod tests {
             "(tags?'highway' AND tags->>'highway' = 'footway') AND (tags?'footway' AND tags->>'footway' = 'traffic_island')"
         );
         assert_eq!(parse("[!amenity]").to_sql(&d, "4326"), "NOT tags?'amenity'");
+    }
+
+    #[test]
+    fn test_matches_to_sql_duckdb() {
+        let d = Box::new(Duckdb::default()) as Box<dyn SqlDialect>;
+
+        assert_eq!(
+            parse("[\"amenity\"]").to_sql(&d, "4326"),
+            "(tags->>'amenity') IS NOT NULL"
+        );
+        assert_eq!(
+            parse("['amenity']").to_sql(&d, "4326"),
+            "(tags->>'amenity') IS NOT NULL"
+        );
+        assert_eq!(
+            parse("[shop=florist]").to_sql(&d, "4326"),
+            "((tags->>'shop') IS NOT NULL AND (tags->>'shop') = 'florist')"
+        );
     }
 
     #[test]

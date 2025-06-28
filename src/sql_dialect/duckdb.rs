@@ -17,11 +17,11 @@ pub mod duckdb {
         }
 
         fn hash_exists(&self, key: &str) -> String {
-            format!("(tags->>'{}') IS NOT NULL", self.escape_literal(key))
+            format!("(tags->>{}) IS NOT NULL", self.escape_literal(key))
         }
 
         fn hash_get(&self, key: &str) -> String {
-            format!("(tags->>'{}')", self.escape_literal(key))
+            format!("(tags->>{})", self.escape_literal(key))
         }
 
         fn json_strip_nulls(&self) -> String {
