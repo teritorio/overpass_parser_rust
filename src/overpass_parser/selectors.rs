@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql_duckdb() {
-        let d = Box::new(Duckdb::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Duckdb) as Box<dyn SqlDialect>;
 
         assert_eq!(
             parse("[\"amenity\"]").to_sql(&d, "4326"),
