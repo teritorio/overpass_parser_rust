@@ -47,7 +47,7 @@ impl Query for QueryRecurse {
         Ok(Box::new(query_recurse))
     }
 
-    fn to_sql(&self, _sql_dialect: &Box<dyn SqlDialect>, _srid: &str, default_set: &str) -> String {
+    fn to_sql(&self, _sql_dialect: &Box<dyn SqlDialect + Send + Sync>, _srid: &str, default_set: &str) -> String {
         format!("SELECT
     way.*
 FROM
@@ -92,7 +92,7 @@ mod tests {
     use super::*;
     use crate::overpass_parser::parse_query;
     use crate::overpass_parser::request::QueryType;
-    
+
     use crate::sql_dialect::postgres::postgres::Postgres;
     use pretty_assertions::assert_eq;
 
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             "SELECT

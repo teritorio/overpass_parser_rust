@@ -50,7 +50,7 @@ impl Query for QueryType {
         }
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str, default_set: &str) -> String {
+    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
         match self {
             QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
@@ -99,7 +99,7 @@ impl Request {
 
     pub fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect>,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
         srid: &str,
         finalizer: Option<String>,
     ) -> String {
@@ -175,7 +175,7 @@ mod tests {
         queries.map(|query| {
             match parse_query(query) {
                 Ok(request) => {
-                    let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+                    let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
                     let sql = request.to_sql(&d, "4326", None);
                     assert_ne!("", sql);
                 }

@@ -34,7 +34,7 @@ impl Out {
         Ok(out)
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
         let way_member_nodes = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let relations_members = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let tags = matches!(self.level_of_details.as_ref(), "body" | "tags" | "meta");

@@ -43,7 +43,7 @@ mod tests {
         out center meta;";
 
         let request = parse_query(query).expect("Failed to parse query");
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         let sql = request.to_sql(&d, "4326", None);
         assert_eq!("SET statement_timeout = 25000;

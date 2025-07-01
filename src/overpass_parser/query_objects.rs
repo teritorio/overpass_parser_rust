@@ -74,7 +74,7 @@ impl Query for QueryObjects {
         }
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str, default_set: &str) -> String {
+    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
         let p: String;
         let from = if self.set.is_none() {
             self.object_type.as_ref()
@@ -146,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_matches_bbox_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             "SELECT
@@ -163,7 +163,7 @@ WHERE
 
     #[test]
     fn test_matches_poly_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             "SELECT

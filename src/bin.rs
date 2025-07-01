@@ -2,13 +2,14 @@ pub mod overpass_parser;
 use std::io;
 
 use overpass_parser::{parse_query, request::Request};
+use sql_dialect::sql_dialect::SqlDialect;
 pub mod sql_dialect;
 
 pub fn main() {
     let dialect = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "postgres".to_string());
-    let sql_dialect: Box<dyn sql_dialect::sql_dialect::SqlDialect> = match dialect.as_str() {
+    let sql_dialect: Box<dyn SqlDialect + Send + Sync> = match dialect.as_str() {
         "postgres" => Box::new(sql_dialect::postgres::postgres::Postgres::default()),
         "duckdb" => Box::new(sql_dialect::duckdb::duckdb::Duckdb),
         _ => panic!("Unsupported SQL dialect: {}", dialect),

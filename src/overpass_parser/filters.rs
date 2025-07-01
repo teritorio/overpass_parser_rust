@@ -104,7 +104,7 @@ impl Filter {
     }
 
     fn bbox_clauses(
-        sql_dialect: &Box<dyn SqlDialect>,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
         bbox: (f64, f64, f64, f64),
         srid: &str,
     ) -> String {
@@ -121,7 +121,7 @@ impl Filter {
         )
     }
 
-    fn poly_clauses(sql_dialect: &Box<dyn SqlDialect>, poly: &[(f64, f64)], srid: &str) -> String {
+    fn poly_clauses(sql_dialect: &Box<dyn SqlDialect + Send + Sync>, poly: &[(f64, f64)], srid: &str) -> String {
         let coords = poly
             .iter()
             .map(|&(lat, lon)| format!("{} {}", lon, lat))
@@ -136,7 +136,7 @@ impl Filter {
 
     fn around_clause(
         &self,
-        sql_dialect: &Box<dyn SqlDialect>,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
         srid: &str,
         around: &FilterAround,
     ) -> String {
@@ -186,7 +186,7 @@ impl Filter {
         )
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
@@ -234,7 +234,7 @@ impl Filters {
         Ok(Filters { filters })
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
         self.filters
             .iter()
             .map(|filter| filter.to_sql(sql_dialect, srid))
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             "ST_Intersects(ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326), geom)",

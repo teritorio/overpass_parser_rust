@@ -95,7 +95,7 @@ impl Selector {
         if m { Some(vec![&self.key]) } else { None }
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, _srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, _srid: &str) -> String {
         let key = sql_dialect.hash_exists(&self.key);
         if self.operator.is_none() {
             if self.not {
@@ -196,7 +196,7 @@ impl Selectors {
         }
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
         self.selectors
             .iter()
             .map(|selector| selector.to_sql(sql_dialect, srid))
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(parse("[\"amenity\"]").to_sql(&d, "4326"), "tags?'amenity'");
         assert_eq!(parse("['amenity']").to_sql(&d, "4326"), "tags?'amenity'");
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql_duckdb() {
-        let d = Box::new(Duckdb) as Box<dyn SqlDialect>;
+        let d = Box::new(Duckdb) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             parse("[\"amenity\"]").to_sql(&d, "4326"),
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql_quote() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
         assert_eq!(
             parse(r#"[name="l'l"]"#).to_sql(&d, "4326"),
             "(tags?'name' AND tags->>'name' = 'l''l')"
@@ -357,7 +357,7 @@ mod tests {
 
         let d = Box::new(Postgres {
             postgres_escape_literal: Some(|s| format!("_{}_", s)),
-        }) as Box<dyn SqlDialect>;
+        }) as Box<dyn SqlDialect + Send + Sync>;
         assert_eq!(
             parse(r#"[name="l'l"]"#).to_sql(&d, "4326"),
             "(tags?_name_ AND tags->>_name_ = _l'l_)"

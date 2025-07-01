@@ -9,7 +9,7 @@ pub fn parse_query_json(query: &str) -> String {
     match parse_query(query) {
         Ok(request) => Request::to_sql(
             &request,
-            &(Box::new(Postgres::default()) as Box<dyn SqlDialect>),
+            &(Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>),
             "4326",
             None,
         ),

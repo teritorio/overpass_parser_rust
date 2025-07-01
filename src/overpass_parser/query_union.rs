@@ -52,7 +52,7 @@ impl Query for QueryUnion {
         Ok(Box::new(query_union))
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect>, srid: &str, default_set: &str) -> String {
+    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
         let mut default_set = default_set;
         let replace = Regex::new(r"^").unwrap();
 
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect>;
+        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
 
         assert_eq!(
             "WITH
