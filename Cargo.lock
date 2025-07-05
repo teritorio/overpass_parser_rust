@@ -221,7 +221,6 @@ dependencies = [
  "pretty_assertions",
  "regex",
  "rust_string_utils",
- "wasm-bindgen",
 ]
 
 [[package]]
