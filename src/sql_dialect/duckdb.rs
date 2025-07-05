@@ -53,15 +53,15 @@ pub mod duckdb {
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({}, 'EPSG:4326', 'EPSG:{}')", geom, srid)
+            format!("ST_Transform({geom}, 'EPSG:4326', 'EPSG:{srid}')")
         }
 
         fn st_transform_reverse(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({}, 'EPSG:{}', 'EPSG:4326')", geom, srid)
+            format!("ST_Transform({geom}, 'EPSG:{srid}', 'EPSG:4326')")
         }
 
         fn st_asgeojson(&self, geom: &str, _max_decimal_digits: usize) -> String {
-            format!("ST_AsGeoJSON({})", geom)
+            format!("ST_AsGeoJSON({geom})")
         }
     }
 }

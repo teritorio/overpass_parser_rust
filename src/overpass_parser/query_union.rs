@@ -101,7 +101,7 @@ mod tests {
                 QueryType::QueryUnion(query_union) => query_union.clone(),
                 _ => panic!("Expected QueryUnion, found {:?}", parsed.queries[1]),
             },
-            Err(e) => panic!("Failed to parse query: {}", e),
+            Err(e) => panic!("Failed to parse query: {e}"),
         }
     }
 

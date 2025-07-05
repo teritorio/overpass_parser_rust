@@ -12,7 +12,7 @@ pub fn main() {
     let sql_dialect: Box<dyn SqlDialect + Send + Sync> = match dialect.as_str() {
         "postgres" => Box::new(sql_dialect::postgres::postgres::Postgres::default()),
         "duckdb" => Box::new(sql_dialect::duckdb::duckdb::Duckdb),
-        _ => panic!("Unsupported SQL dialect: {}", dialect),
+        _ => panic!("Unsupported SQL dialect: {dialect}"),
     };
 
     // read stdin
@@ -21,9 +21,9 @@ pub fn main() {
             let query = query0.as_str();
             let out = match parse_query(query) {
                 Ok(request) => Request::to_sql(&request, &sql_dialect, "4326", None),
-                Err(e) => panic!("Error parsing query: {}", e),
+                Err(e) => panic!("Error parsing query: {e}"),
             };
-            println!("{}", out);
+            println!("{out}");
         }
         None => {
             eprintln!("Failed to read from stdin");

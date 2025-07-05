@@ -52,7 +52,7 @@ impl Filter {
                         if chunk.len() == 2 {
                             (chunk[0], chunk[1])
                         } else {
-                            panic!("Invalid point in poly filter: {:?}", chunk);
+                            panic!("Invalid point in poly filter: {chunk:?}");
                         }
                     })
                     .collect::<Vec<(f64, f64)>>();
@@ -124,13 +124,13 @@ impl Filter {
     fn poly_clauses(sql_dialect: &Box<dyn SqlDialect + Send + Sync>, poly: &[(f64, f64)], srid: &str) -> String {
         let coords = poly
             .iter()
-            .map(|&(lat, lon)| format!("{} {}", lon, lat))
+            .map(|&(lat, lon)| format!("{lon} {lat}"))
             .collect::<Vec<String>>()
             .join(", ");
         format!(
             "{}({}, geom)",
             sql_dialect.st_intersects(),
-            sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({})'::geometry", coords), srid)
+            sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({coords})'::geometry"), srid)
         )
     }
 
@@ -150,13 +150,12 @@ impl Filter {
                 -- Calculate UTM zone from
                 32600 +
                 CASE WHEN ST_Y(ST_Centroid(
-                    {}
+                    {core_geom}
                 )) >= 0 THEN 1 ELSE 31 END +
                 floor(ST_X(ST_Centroid(
-                    {}
+                    {core_geom}
                 ) + 180) / 6)
-            ",
-            core_geom, core_geom
+            "
         );
         format!(
             "{}(
@@ -174,8 +173,7 @@ impl Filter {
                     sql_dialect.st_transform(
                         &format!(
                             "
-                {}",
-                            core_geom
+                {core_geom}"
                         ),
                         &utm_zone
                     ),
@@ -265,7 +263,7 @@ mod tests {
                     .clone(),
                 _ => panic!("Expected a QueryObjects, got {:?}", parsed.queries[0]),
             },
-            Err(e) => panic!("Failed to parse query: {}", e),
+            Err(e) => panic!("Failed to parse query: {e}"),
         }
     }
 

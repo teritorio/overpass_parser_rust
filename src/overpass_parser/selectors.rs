@@ -87,7 +87,7 @@ impl Selector {
                 match operator {
                     "~" => self_value.is_match(value),
                     "!~" => self_value.is_match(value),
-                    _ => panic!("unknow operator {:?}", self),
+                    _ => panic!("unknow operator {self:?}"),
                 }
             }
         };
@@ -99,7 +99,7 @@ impl Selector {
         let key = sql_dialect.hash_exists(&self.key);
         if self.operator.is_none() {
             if self.not {
-                format!("NOT {}", key)
+                format!("NOT {key}")
             } else {
                 key
             }
@@ -115,7 +115,7 @@ impl Selector {
             match op {
                 "=" => {
                     if value.is_empty() {
-                        format!("NOT {}", key)
+                        format!("NOT {key}")
                     } else {
                         format!(
                             "({} AND {} = {})",
@@ -225,7 +225,7 @@ mod tests {
                 QueryType::QueryObjects(query_objets) => query_objets.selectors.clone(),
                 _ => panic!("Expected a QueryObjects, got {:?}", parsed.queries[0]),
             },
-            Err(e) => panic!("Failed to parse query: {}", e),
+            Err(e) => panic!("Failed to parse query: {e}"),
         }
     }
 
@@ -356,7 +356,7 @@ mod tests {
         );
 
         let d = Box::new(Postgres {
-            postgres_escape_literal: Some(|s| format!("_{}_", s)),
+            postgres_escape_literal: Some(|s| format!("_{s}_")),
         }) as Box<dyn SqlDialect + Send + Sync>;
         assert_eq!(
             parse(r#"[name="l'l"]"#).to_sql(&d, "4326"),

@@ -20,7 +20,7 @@ pub mod postgres {
         }
 
         fn statement_timeout(&self, timeout: u32) -> String {
-            format!("SET statement_timeout = {};", timeout)
+            format!("SET statement_timeout = {timeout};")
         }
 
         fn hash_exists(&self, key: &str) -> String {
@@ -60,15 +60,15 @@ pub mod postgres {
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({}, {})", geom, srid)
+            format!("ST_Transform({geom}, {srid})")
         }
 
         fn st_transform_reverse(&self, geom: &str, _srid: &str) -> String {
-            format!("ST_Transform({}, 4326)", geom)
+            format!("ST_Transform({geom}, 4326)")
         }
 
         fn st_asgeojson(&self, geom: &str, max_decimal_digits: usize) -> String {
-            format!("ST_AsGeoJSON({}, {})", geom, max_decimal_digits)
+            format!("ST_AsGeoJSON({geom}, {max_decimal_digits})")
         }
     }
 }

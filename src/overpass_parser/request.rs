@@ -187,7 +187,7 @@ mod tests {
                     assert_ne!("", sql);
                 }
                 Err(e) => {
-                    println!("Error parsing query: {}", e);
+                    println!("Error parsing query: {e}");
                     panic!("Parsing fails");
                 }
             };

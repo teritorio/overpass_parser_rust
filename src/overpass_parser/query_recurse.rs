@@ -102,7 +102,7 @@ mod tests {
                 QueryType::QueryRecurse(query_recurse) => query_recurse.clone(),
                 _ => panic!("Expected QueryRecurse, found {:?}", parsed.queries[1]),
             },
-            Err(e) => panic!("Failed to parse query: {}", e),
+            Err(e) => panic!("Failed to parse query: {e}"),
         }
     }
 

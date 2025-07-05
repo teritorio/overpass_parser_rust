@@ -117,9 +117,8 @@ impl Query for QueryObjects {
             "SELECT
     *
 FROM
-    {}
-{}",
-            from, where_clause
+    {from}
+{where_clause}"
         )
     }
 }
@@ -140,7 +139,7 @@ mod tests {
                 _ => panic!("Expected a QueryObjects, got {:?}", parsed.queries[0]),
             },
 
-            Err(e) => panic!("Failed to parse query: {}", e),
+            Err(e) => panic!("Failed to parse query: {e}"),
         }
     }
 
