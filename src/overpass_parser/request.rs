@@ -101,7 +101,7 @@ impl Request {
         &self,
         sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
         srid: &str,
-        finalizer: Option<String>,
+        finalizer: Option<&str>,
     ) -> String {
         let mut default_set = "_";
         let replace = Regex::new(r"(?m)^").unwrap();
