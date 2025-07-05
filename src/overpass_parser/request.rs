@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::overpass_parser::out::Out;
 use pest::iterators::Pair;
 use regex::Regex;
@@ -50,7 +52,12 @@ impl Query for QueryType {
         }
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
+    fn to_sql(
+        &self,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        srid: &str,
+        default_set: &str,
+    ) -> String {
         match self {
             QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
@@ -103,23 +110,23 @@ impl Request {
         srid: &str,
         finalizer: Option<&str>,
     ) -> String {
-        let mut default_set = "_";
+        let mut default_set: Cow<str> = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
         let mut with = self
             .queries
             .iter()
             .map(|query| {
-                let mut sql = query.to_sql(sql_dialect, srid, default_set);
+                let mut sql = query.to_sql(sql_dialect, srid, &default_set);
                 sql = replace.replace_all(&sql, "    ").to_string();
-                default_set = query.asignation();
-                format!("_{default_set} AS (\n{sql}\n)")
+                default_set = format!("_{}", query.asignation()).into();
+                format!("{default_set} AS (\n{sql}\n)")
             })
             .collect::<Vec<String>>();
         if finalizer.is_some() {
-            let mut finalizer = finalizer.unwrap().replace("{{query}}", default_set);
+            let mut finalizer = finalizer.unwrap().replace("{{query}}", &default_set);
             finalizer = replace.replace_all(&finalizer, "  ").to_string();
             with.push(format!("__finalizer AS (\n{finalizer}\n)"));
-            default_set = "__finalizer";
+            default_set = "__finalizer".into();
         };
         let with_join = with.join(",\n");
         let select = self
@@ -134,7 +141,7 @@ WITH
 {with_join}
 {select}
 FROM
-    _{default_set}
+    {default_set}
 ;"
         )
     }
