@@ -135,7 +135,11 @@ impl Filter {
         )
     }
 
-    fn poly_clauses(sql_dialect: &Box<dyn SqlDialect + Send + Sync>, poly: &[(f64, f64)], srid: &str) -> String {
+    fn poly_clauses(
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        poly: &[(f64, f64)],
+        srid: &str,
+    ) -> String {
         let coords = poly
             .iter()
             .map(|&(lat, lon)| format!("{lon} {lat}"))

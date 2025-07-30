@@ -52,7 +52,12 @@ impl Query for QueryUnion {
         Ok(Box::new(query_union))
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
+    fn to_sql(
+        &self,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        srid: &str,
+        default_set: &str,
+    ) -> String {
         let mut default_set = default_set;
         let replace = Regex::new(r"^").unwrap();
 

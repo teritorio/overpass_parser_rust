@@ -8,5 +8,10 @@ pub trait Query {
 
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>>;
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String;
+    fn to_sql(
+        &self,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        srid: &str,
+        default_set: &str,
+    ) -> String;
 }

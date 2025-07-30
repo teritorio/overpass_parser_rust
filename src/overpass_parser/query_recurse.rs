@@ -52,7 +52,12 @@ impl Query for QueryRecurse {
         Ok(Box::new(query_recurse))
     }
 
-    fn to_sql(&self, _sql_dialect: &Box<dyn SqlDialect + Send + Sync>, _srid: &str, default_set: &str) -> String {
+    fn to_sql(
+        &self,
+        _sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        _srid: &str,
+        default_set: &str,
+    ) -> String {
         format!("SELECT
     way.*
 FROM

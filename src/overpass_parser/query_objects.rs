@@ -81,7 +81,12 @@ impl Query for QueryObjects {
         }
     }
 
-    fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str, default_set: &str) -> String {
+    fn to_sql(
+        &self,
+        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        srid: &str,
+        default_set: &str,
+    ) -> String {
         let p: String;
         let from = if self.set.is_none() {
             self.object_type.as_ref()

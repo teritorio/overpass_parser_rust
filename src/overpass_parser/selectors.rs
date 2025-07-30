@@ -105,11 +105,7 @@ impl Selector {
     pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, _srid: &str) -> String {
         let key = sql_dialect.hash_exists(&self.key);
         if self.operator.is_none() {
-            if self.not {
-                format!("NOT {key}")
-            } else {
-                key
-            }
+            if self.not { format!("NOT {key}") } else { key }
         } else {
             let op = self.operator.as_deref().unwrap();
             let value = match self.value.as_deref() {

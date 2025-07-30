@@ -1,4 +1,4 @@
-pub trait SqlDialect : Send + Sync {
+pub trait SqlDialect: Send + Sync {
     fn escape_literal(&self, string: &str) -> String {
         format!("'{}'", string.replace('\'', "''"))
     }
