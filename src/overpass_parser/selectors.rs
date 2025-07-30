@@ -344,15 +344,15 @@ mod tests {
 
         assert_eq!(
             parse("[\"amenity\"]").to_sql(d, "4326"),
-            "(tags->>'amenity') IS NOT NULL"
+            "tags?'amenity'"
         );
         assert_eq!(
             parse("['amenity']").to_sql(d, "4326"),
-            "(tags->>'amenity') IS NOT NULL"
+            "tags?'amenity'"
         );
         assert_eq!(
             parse("[shop=florist]").to_sql(d, "4326"),
-            "((tags->>'shop') IS NOT NULL AND (tags->>'shop') = 'florist')"
+            "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
     }
 
