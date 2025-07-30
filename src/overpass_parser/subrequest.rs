@@ -59,7 +59,7 @@ impl Query for QueryType {
 
     fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
     ) -> String {
@@ -116,7 +116,7 @@ impl Subrequest {
         Ok(subrequest)
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         let mut default_set: Cow<str> = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
         let with = self
@@ -162,8 +162,8 @@ mod tests {
             out;";
         match parse_query(query) {
             Ok(request) => {
-                let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
-                let sql = request.to_sql(&d, "4326", None);
+                let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                let sql = request.to_sql(d, "4326", None);
                 assert_ne!("", sql);
             }
             Err(e) => {

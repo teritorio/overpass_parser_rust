@@ -41,7 +41,7 @@ impl Out {
         Ok(out)
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         let way_member_nodes = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let relations_members = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let tags = matches!(self.level_of_details.as_ref(), "body" | "tags" | "meta");
@@ -172,8 +172,8 @@ mod tests {
         ";
         match parse_query(query) {
             Ok(request) => {
-                let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
-                let sql = request.to_sql(&d, "4326", None);
+                let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                let sql = request.to_sql(d, "4326", None);
                 assert_eq!("SET statement_timeout = 25000;
 (
 WITH

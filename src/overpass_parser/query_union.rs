@@ -54,7 +54,7 @@ impl Query for QueryUnion {
 
     fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
     ) -> String {
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
             "WITH
@@ -143,7 +143,7 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id",
-            parse("(node->.a;way->.b;);").to_sql(&d, "4326", "_")
+            parse("(node->.a;way->.b;);").to_sql(d, "4326", "_")
         )
     }
 }

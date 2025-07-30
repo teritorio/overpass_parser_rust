@@ -10,7 +10,7 @@ pub trait Query {
 
     fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
     ) -> String;

@@ -102,7 +102,7 @@ impl Selector {
         if m { Some(vec![&self.key]) } else { None }
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, _srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), _srid: &str) -> String {
         let key = sql_dialect.hash_exists(&self.key);
         if self.operator.is_none() {
             if self.not { format!("NOT {key}") } else { key }
@@ -199,7 +199,7 @@ impl Selectors {
         }
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         self.selectors
             .iter()
             .map(|selector| selector.to_sql(sql_dialect, srid))
@@ -312,60 +312,60 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(parse("[\"amenity\"]").to_sql(&d, "4326"), "tags?'amenity'");
-        assert_eq!(parse("['amenity']").to_sql(&d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "4326"), "tags?'amenity'");
         assert_eq!(
-            parse("[shop=florist]").to_sql(&d, "4326"),
+            parse("[shop=florist]").to_sql(d, "4326"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse("[shop=\"florist\"]").to_sql(&d, "4326"),
+            parse("[shop=\"florist\"]").to_sql(d, "4326"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse(r#"[shop~"pizza.*"]"#).to_sql(&d, "4326"),
+            parse(r#"[shop~"pizza.*"]"#).to_sql(d, "4326"),
             "(tags?'shop' AND tags->>'shop' ~ 'pizza.*')"
         );
         assert_eq!(
-            parse("[highway=footway][footway=traffic_island]").to_sql(&d, "4326"),
+            parse("[highway=footway][footway=traffic_island]").to_sql(d, "4326"),
             "(tags?'highway' AND tags->>'highway' = 'footway') AND (tags?'footway' AND tags->>'footway' = 'traffic_island')"
         );
-        assert_eq!(parse("[!amenity]").to_sql(&d, "4326"), "NOT tags?'amenity'");
+        assert_eq!(parse("[!amenity]").to_sql(d, "4326"), "NOT tags?'amenity'");
     }
 
     #[test]
     fn test_matches_to_sql_duckdb() {
-        let d = Box::new(Duckdb) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
-            parse("[\"amenity\"]").to_sql(&d, "4326"),
+            parse("[\"amenity\"]").to_sql(d, "4326"),
             "(tags->>'amenity') IS NOT NULL"
         );
         assert_eq!(
-            parse("['amenity']").to_sql(&d, "4326"),
+            parse("['amenity']").to_sql(d, "4326"),
             "(tags->>'amenity') IS NOT NULL"
         );
         assert_eq!(
-            parse("[shop=florist]").to_sql(&d, "4326"),
+            parse("[shop=florist]").to_sql(d, "4326"),
             "((tags->>'shop') IS NOT NULL AND (tags->>'shop') = 'florist')"
         );
     }
 
     #[test]
     fn test_matches_to_sql_quote() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(&d, "4326"),
+            parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
             "(tags?'name' AND tags->>'name' = 'l''l')"
         );
 
-        let d = Box::new(Postgres {
+        let d = &Postgres {
             postgres_escape_literal: Some(|s| format!("_{s}_")),
-        }) as Box<dyn SqlDialect + Send + Sync>;
+        } as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(&d, "4326"),
+            parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
             "(tags?_name_ AND tags->>_name_ = _l'l_)"
         );
     }

@@ -118,7 +118,7 @@ impl Filter {
     }
 
     fn bbox_clauses(
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         bbox: (f64, f64, f64, f64),
         srid: &str,
     ) -> String {
@@ -136,7 +136,7 @@ impl Filter {
     }
 
     fn poly_clauses(
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         poly: &[(f64, f64)],
         srid: &str,
     ) -> String {
@@ -154,7 +154,7 @@ impl Filter {
 
     fn around_clause(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         around: &FilterAround,
     ) -> String {
@@ -202,7 +202,7 @@ impl Filter {
         )
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
@@ -250,7 +250,7 @@ impl Filters {
         Ok(Filters { filters })
     }
 
-    pub fn to_sql(&self, sql_dialect: &Box<dyn SqlDialect + Send + Sync>, srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         self.filters
             .iter()
             .map(|filter| filter.to_sql(sql_dialect, srid))
@@ -290,23 +290,23 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
             "ST_Intersects(ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326), geom)",
-            parse("(-1.1,2,3,4)").to_sql(&d, "4326")
+            parse("(-1.1,2,3,4)").to_sql(d, "4326")
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(&d, "4326")
+            parse("(11111111111111)").to_sql(d, "4326")
         );
         assert_eq!(
             "id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(&d, "4326")
+            parse("(id:1,2,3)").to_sql(d, "4326")
         );
         assert_eq!(
             "ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))",
-            parse("(area.a)").to_sql(&d, "4326")
+            parse("(area.a)").to_sql(d, "4326")
         );
         assert_eq!(
             "ST_Intersects(
@@ -327,7 +327,7 @@ mod tests {
             12.3
         ), 4326)
 )",
-            parse("(around.a:12.3)").to_sql(&d, "4326")
+            parse("(around.a:12.3)").to_sql(d, "4326")
         );
     }
 }

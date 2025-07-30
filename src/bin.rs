@@ -9,9 +9,9 @@ pub fn main() {
     let dialect = std::env::args()
         .nth(1)
         .unwrap_or_else(|| "postgres".to_string());
-    let sql_dialect: Box<dyn SqlDialect + Send + Sync> = match dialect.as_str() {
-        "postgres" => Box::new(sql_dialect::postgres::postgres::Postgres::default()),
-        "duckdb" => Box::new(sql_dialect::duckdb::duckdb::Duckdb),
+    let sql_dialect: &(dyn SqlDialect + Send + Sync) = match dialect.as_str() {
+        "postgres" => &sql_dialect::postgres::postgres::Postgres::default(),
+        "duckdb" => &sql_dialect::duckdb::duckdb::Duckdb,
         _ => panic!("Unsupported SQL dialect: {dialect}"),
     };
 
@@ -20,7 +20,7 @@ pub fn main() {
         Some(query0) => {
             let query = query0.as_str();
             let out = match parse_query(query) {
-                Ok(request) => Request::to_sql(&request, &sql_dialect, "4326", None),
+                Ok(request) => Request::to_sql(&request, sql_dialect, "4326", None),
                 Err(e) => panic!("Error parsing query: {e}"),
             };
             println!("{out}");

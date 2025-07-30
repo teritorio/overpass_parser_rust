@@ -54,7 +54,7 @@ impl Query for QueryRecurse {
 
     fn to_sql(
         &self,
-        _sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        _sql_dialect: &(dyn SqlDialect + Send + Sync),
         _srid: &str,
         default_set: &str,
     ) -> String {
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_matches_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
             "SELECT
@@ -160,6 +160,6 @@ FROM
 WHERE
     relation.osm_type = 'r'",
             parse("way;>;")
-                .to_sql(&d, "4326", "_"))
+                .to_sql(d, "4326", "_"))
     }
 }

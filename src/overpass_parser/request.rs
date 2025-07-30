@@ -47,7 +47,7 @@ impl Request {
 
     pub fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         finalizer: Option<&str>,
     ) -> String {
@@ -107,8 +107,8 @@ mod tests {
         queries.map(|query| {
             match parse_query(query) {
                 Ok(request) => {
-                    let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
-                    let sql = request.to_sql(&d, "4326", None);
+                    let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                    let sql = request.to_sql(d, "4326", None);
                     assert_ne!("", sql);
                 }
                 Err(e) => {

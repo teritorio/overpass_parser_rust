@@ -86,7 +86,7 @@ impl Query for QueryObjects {
 
     fn to_sql(
         &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
     ) -> String {
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_matches_bbox_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
             "SELECT
@@ -173,13 +173,13 @@ WHERE
     osm_type = 'n' AND
     (tags?'a' AND tags->>'a' = 'b') AND
     ST_Intersects(ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 4326), geom)",
-                      parse("node.a[a=b](1,2,3,4)->.b").to_sql(&d, "4326", "_")
+                      parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "4326", "_")
         );
     }
 
     #[test]
     fn test_matches_poly_to_sql() {
-        let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
             "SELECT
@@ -189,7 +189,7 @@ FROM
 WHERE
     osm_type = 'n' AND
     ST_Intersects(ST_Transform('SRID=4326;POLYGON(2 1, 4 3, 6 5)'::geometry, 4326), geom)",
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(&d, "4326", "_")
+            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "4326", "_")
         );
     }
 }
