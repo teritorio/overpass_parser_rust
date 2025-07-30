@@ -28,7 +28,14 @@ impl Out {
                 Rule::out_level_of_details => {
                     out.level_of_details = inner_pair.as_str().into();
                 }
-                _ => {}
+                _ => {
+                    return Err(pest::error::Error::new_from_span(
+                        pest::error::ErrorVariant::CustomError {
+                            message: "Invalid rule for Out".to_string(),
+                        },
+                        inner_pair.as_span(),
+                    ));
+                }
             }
         }
         Ok(out)

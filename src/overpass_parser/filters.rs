@@ -93,12 +93,26 @@ impl Filter {
                                 around.radius = radius;
                             }
                         }
-                        _ => {}
+                        _ => {
+                            return Err(pest::error::Error::new_from_span(
+                                pest::error::ErrorVariant::CustomError {
+                                    message: "Invalid rule for FilterAround".to_string(),
+                                },
+                                around_inner.as_span(),
+                            ));
+                        }
                     }
                 }
                 filter.around = Some(around);
             }
-            _ => {}
+            _ => {
+                return Err(pest::error::Error::new_from_span(
+                    pest::error::ErrorVariant::CustomError {
+                        message: "Invalid rule for Filter".to_string(),
+                    },
+                    pair.as_span(),
+                ));
+            }
         }
         Ok(filter)
     }

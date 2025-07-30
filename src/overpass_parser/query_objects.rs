@@ -60,7 +60,14 @@ impl Query for QueryObjects {
                                 .unwrap()
                                 .into();
                         }
-                        _ => {}
+                        _ => {
+                            return Err(pest::error::Error::new_from_span(
+                                pest::error::ErrorVariant::CustomError {
+                                    message: "Invalid rule for QueryObjects".to_string(),
+                                },
+                                inner_pair.as_span(),
+                            ));
+                        }
                     }
                 }
                 Ok(Box::new(query_objects))

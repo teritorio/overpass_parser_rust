@@ -53,7 +53,14 @@ impl Selector {
                         selector.value = Some(value.into());
                     }
                 }
-                _ => {}
+                _ => {
+                    return Err(pest::error::Error::new_from_span(
+                        pest::error::ErrorVariant::CustomError {
+                            message: "Invalid rule for Selector".to_string(),
+                        },
+                        inner_pair.as_span(),
+                    ));
+                }
             }
         }
         Ok(selector)

@@ -98,7 +98,14 @@ impl Request {
                 Rule::out => {
                     request.out = Some(Out::from_pest(inner)?);
                 }
-                _ => {}
+                _ => {
+                    return Err(pest::error::Error::new_from_span(
+                        pest::error::ErrorVariant::CustomError {
+                            message: "Invalid rule for Request".to_string(),
+                        },
+                        inner.as_span(),
+                    ));
+                }
             }
         }
         Ok(request)
