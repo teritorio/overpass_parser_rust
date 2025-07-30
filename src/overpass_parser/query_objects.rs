@@ -103,7 +103,6 @@ impl Query for QueryObjects {
         let mut where_clauses = Vec::new();
 
         if self.object_type.as_ref() == "nwr" {
-            where_clauses.push("osm_type = ANY (ARRAY['n', 'w', 'r'])".to_string());
         } else if self.object_type.as_ref() != "area" {
             where_clauses.push(format!(
                 "osm_type = '{}'",

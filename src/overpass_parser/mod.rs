@@ -64,7 +64,6 @@ _k AS (
     FROM
         nwr
     WHERE
-        osm_type = ANY (ARRAY['n', 'w', 'r']) AND
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
         ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))
     ),
@@ -74,7 +73,6 @@ _k AS (
     FROM
         nwr
     WHERE
-        osm_type = ANY (ARRAY['n', 'w', 'r']) AND
         tags?'c' AND
         ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))
     )
