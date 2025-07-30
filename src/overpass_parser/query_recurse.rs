@@ -41,12 +41,17 @@ impl Query for QueryRecurse {
                         .unwrap()
                         .into()
                 }
-                _ => return Err(pest::error::Error::new_from_span(
-                    pest::error::ErrorVariant::CustomError {
-                        message: format!("Invalid rule {:?} for QueryRecurse", inner_pair.as_rule()),
-                    },
-                    inner_pair.as_span(),
-                )),
+                _ => {
+                    return Err(pest::error::Error::new_from_span(
+                        pest::error::ErrorVariant::CustomError {
+                            message: format!(
+                                "Invalid rule {:?} for QueryRecurse",
+                                inner_pair.as_rule()
+                            ),
+                        },
+                        inner_pair.as_span(),
+                    ));
+                }
             }
         }
         Ok(Box::new(query_recurse))

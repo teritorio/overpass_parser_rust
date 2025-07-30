@@ -56,7 +56,10 @@ impl Selector {
                 _ => {
                     return Err(pest::error::Error::new_from_span(
                         pest::error::ErrorVariant::CustomError {
-                            message: format!("Invalid rule {:?} for Selector", inner_pair.as_rule()),
+                            message: format!(
+                                "Invalid rule {:?} for Selector",
+                                inner_pair.as_rule()
+                            ),
                         },
                         inner_pair.as_span(),
                     ));
@@ -216,7 +219,7 @@ mod tests {
     use crate::{
         overpass_parser::{parse_query, subrequest::QueryType},
         sql_dialect::{
-            duckdb::duckdb::Duckdb, postgres::postgres::Postgres, sql_dialect::SqlDialect,
+            postgres::postgres::Postgres, sql_dialect::SqlDialect,
         },
     };
 
