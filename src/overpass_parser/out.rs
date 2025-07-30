@@ -87,7 +87,7 @@ impl Out {
         'minlat', ST_YMin(ST_Envelope({st_transform_reverse}))::numeric,
         'maxlon', ST_XMax(ST_Envelope({st_transform_reverse}))::numeric,
         'maxlat', ST_YMax(ST_Envelope({st_transform_reverse}))::numeric
-      )
+    )
     END"
             )
         } else {
@@ -151,5 +151,105 @@ FROM {st_dump_points}(geom))",
     'id', id,
     'lon', CASE osm_type WHEN 'n' THEN ST_X({st_transform_reverse})::numeric END,
     'lat', CASE osm_type WHEN 'n' THEN ST_Y({st_transform_reverse})::numeric END{meta_fields}{geom_center}{geom_bb_geom}{geom}{way_member_nodes_field}{relations_members_field}{tags_field})) AS j")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{overpass_parser::parse_query, sql_dialect::postgres::postgres::Postgres};
+
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_multiple_output() {
+        let query = "
+            [out:json][timeout:25];
+            node(1573900912)->.a;
+            out geom;
+            node(1573900912)->.b;
+            out geom;
+        ";
+        match parse_query(query) {
+            Ok(request) => {
+                let d = Box::new(Postgres::default()) as Box<dyn SqlDialect + Send + Sync>;
+                let sql = request.to_sql(&d, "4326", None);
+                assert_eq!("SET statement_timeout = 25000;
+(
+WITH
+_a AS (
+    SELECT
+        *
+    FROM
+        node
+    WHERE
+        osm_type = 'n' AND
+        id = ANY (ARRAY[1573900912])
+)
+SELECT
+    jsonb_strip_nulls(jsonb_build_object(
+    'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
+    'id', id,
+    'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
+    'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
+    'bounds', CASE osm_type = 'w' OR osm_type = 'r'
+    WHEN true THEN jsonb_build_object(
+        'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+    )
+    END,
+    'geometry', CASE osm_type
+        WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
+    END,
+    'nodes', nodes,
+    'members', members,
+    'tags', tags)) AS j
+FROM
+    _a
+
+) UNION ALL (
+
+WITH
+_b AS (
+    SELECT
+        *
+    FROM
+        node
+    WHERE
+        osm_type = 'n' AND
+        id = ANY (ARRAY[1573900912])
+)
+SELECT
+    jsonb_strip_nulls(jsonb_build_object(
+    'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
+    'id', id,
+    'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
+    'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
+    'bounds', CASE osm_type = 'w' OR osm_type = 'r'
+    WHEN true THEN jsonb_build_object(
+        'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+        'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+    )
+    END,
+    'geometry', CASE osm_type
+        WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
+    END,
+    'nodes', nodes,
+    'members', members,
+    'tags', tags)) AS j
+FROM
+    _b
+)
+;", sql);
+            }
+            Err(e) => {
+                println!("Error parsing query: {e}");
+                panic!("Parsing fails");
+            }
+        };
     }
 }

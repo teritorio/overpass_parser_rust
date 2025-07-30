@@ -214,7 +214,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        overpass_parser::{parse_query, request::QueryType},
+        overpass_parser::{parse_query, subrequest::QueryType},
         sql_dialect::{
             duckdb::duckdb::Duckdb, postgres::postgres::Postgres, sql_dialect::SqlDialect,
         },
@@ -224,9 +224,12 @@ mod tests {
 
     fn parse(query: &str) -> Selectors {
         match parse_query(format!("node{query};").as_str()) {
-            Ok(parsed) => match parsed.queries[0].as_ref() {
+            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
                 QueryType::QueryObjects(query_objets) => query_objets.selectors.clone(),
-                _ => panic!("Expected a QueryObjects, got {:?}", parsed.queries[0]),
+                _ => panic!(
+                    "Expected a QueryObjects, got {:?}",
+                    parsed.subrequests[0].queries[0]
+                ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),
         }

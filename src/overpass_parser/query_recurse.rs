@@ -101,16 +101,19 @@ WHERE
 mod tests {
     use super::*;
     use crate::overpass_parser::parse_query;
-    use crate::overpass_parser::request::QueryType;
+    use crate::overpass_parser::subrequest::QueryType;
 
     use crate::sql_dialect::postgres::postgres::Postgres;
     use pretty_assertions::assert_eq;
 
     fn parse(query: &str) -> QueryRecurse {
         match parse_query(query) {
-            Ok(parsed) => match parsed.queries[1].as_ref() {
+            Ok(parsed) => match parsed.subrequests[0].queries[1].as_ref() {
                 QueryType::QueryRecurse(query_recurse) => query_recurse.clone(),
-                _ => panic!("Expected QueryRecurse, found {:?}", parsed.queries[1]),
+                _ => panic!(
+                    "Expected QueryRecurse, found {:?}",
+                    parsed.subrequests[0].queries[1]
+                ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),
         }

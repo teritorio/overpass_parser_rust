@@ -1,70 +1,10 @@
-use std::borrow::Cow;
-
-use crate::overpass_parser::out::Out;
 use pest::iterators::Pair;
-use regex::Regex;
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
 use derivative::Derivative;
 
-use super::{
-    Rule, query::Query, query_objects::QueryObjects, query_recurse::QueryRecurse,
-    query_union::QueryUnion,
-};
-
-#[derive(Debug, Clone)]
-pub enum QueryType {
-    QueryObjects(QueryObjects),
-    QueryUnion(QueryUnion),
-    QueryRecurse(QueryRecurse),
-}
-
-impl Query for QueryType {
-    fn asignation(&self) -> &str {
-        match self {
-            QueryType::QueryObjects(query) => query.asignation(),
-            QueryType::QueryUnion(query) => query.asignation(),
-            QueryType::QueryRecurse(query) => query.asignation(),
-        }
-    }
-
-    fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
-        match pair.as_rule() {
-            Rule::query_object => {
-                let query_objects = QueryObjects::from_pest(pair)?;
-                Ok(Box::new(QueryType::QueryObjects(*query_objects)))
-            }
-            Rule::query_union => {
-                let query_union = QueryUnion::from_pest(pair)?;
-                Ok(Box::new(QueryType::QueryUnion(*query_union)))
-            }
-            Rule::query_recurse => {
-                let query_recurse = QueryRecurse::from_pest(pair)?;
-                Ok(Box::new(QueryType::QueryRecurse(*query_recurse)))
-            }
-            _ => Err(pest::error::Error::new_from_span(
-                pest::error::ErrorVariant::CustomError {
-                    message: format!("Invalid rule {:?} for QueryType", pair.as_rule()),
-                },
-                pair.as_span(),
-            )),
-        }
-    }
-
-    fn to_sql(
-        &self,
-        sql_dialect: &Box<dyn SqlDialect + Send + Sync>,
-        srid: &str,
-        default_set: &str,
-    ) -> String {
-        match self {
-            QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
-            QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
-            QueryType::QueryRecurse(query) => query.to_sql(sql_dialect, srid, default_set),
-        }
-    }
-}
+use super::{Rule, subrequest::Subrequest};
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -72,8 +12,7 @@ impl Query for QueryType {
 pub struct Request {
     #[derivative(Default(value = "Some(160)"))]
     pub timeout: Option<u32>,
-    pub queries: Vec<Box<QueryType>>,
-    pub out: Option<Out>,
+    pub subrequests: Vec<Subrequest>,
 }
 
 impl Request {
@@ -87,16 +26,11 @@ impl Request {
                         .find(|p| p.as_rule() == Rule::number)
                         .map(|p| p.as_str().parse::<u32>().ok().unwrap());
                 }
-                Rule::query_sequence => {
-                    for query in inner.into_inner() {
-                        match QueryType::from_pest(query) {
-                            Ok(query_type) => request.queries.push(query_type),
-                            Err(e) => return Err(e),
-                        }
-                    }
-                }
-                Rule::out => {
-                    request.out = Some(Out::from_pest(inner)?);
+                Rule::subrequest => {
+                    match Subrequest::from_pest(inner) {
+                        Ok(subrequest) => request.subrequests.push(subrequest),
+                        Err(e) => return Err(e),
+                    };
                 }
                 _ => {
                     return Err(pest::error::Error::new_from_span(
@@ -117,40 +51,24 @@ impl Request {
         srid: &str,
         finalizer: Option<&str>,
     ) -> String {
-        let mut default_set: Cow<str> = "_".into();
-        let replace = Regex::new(r"(?m)^").unwrap();
-        let mut with = self
-            .queries
+        let union_all = self
+            .subrequests
             .iter()
-            .map(|query| {
-                let mut sql = query.to_sql(sql_dialect, srid, &default_set);
-                sql = replace.replace_all(&sql, "    ").to_string();
-                default_set = format!("_{}", query.asignation()).into();
-                format!("{default_set} AS (\n{sql}\n)")
-            })
+            .map(|subrequest| subrequest.to_sql(sql_dialect, srid))
             .collect::<Vec<String>>();
-        if finalizer.is_some() {
-            let mut finalizer = finalizer.unwrap().replace("{{query}}", &default_set);
-            finalizer = replace.replace_all(&finalizer, "  ").to_string();
-            with.push(format!("__finalizer AS (\n{finalizer}\n)"));
-            default_set = "__finalizer".into();
-        };
-        let with_join = with.join(",\n");
-        let select = self
-            .out
-            .as_ref()
-            .unwrap_or(&Out::default())
-            .to_sql(sql_dialect, srid);
+        // if finalizer.is_some() {
+        //     let mut finalizer = finalizer.unwrap().replace("{{query}}", &default_set);
+        //     finalizer = replace.replace_all(&finalizer, "  ").to_string();
+        //     with.push(format!("__finalizer AS (\n{finalizer}\n)"));
+        //     default_set = "__finalizer".into();
+        // };
         let timeout = sql_dialect.statement_timeout(self.timeout.unwrap_or(180).min(500) * 1000);
-        format!(
-            "{timeout}
-WITH
-{with_join}
-{select}
-FROM
-    {default_set}
-;"
-        )
+        if union_all.len() == 1 {
+            format!("{timeout}\n{}\n;", union_all[0])
+        } else {
+            let select = union_all.join("\n\n) UNION ALL (\n\n");
+            format!("{timeout}\n(\n{select}\n)\n;")
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use pest::iterators::Pair;
 use derivative::Derivative;
 use regex::Regex;
 
-use super::{Rule, query::Query, request::QueryType};
+use super::{Rule, query::Query, subrequest::QueryType};
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -102,9 +102,12 @@ mod tests {
 
     fn parse(query: &str) -> QueryUnion {
         match parse_query(query) {
-            Ok(parsed) => match parsed.queries[0].as_ref() {
+            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
                 QueryType::QueryUnion(query_union) => query_union.clone(),
-                _ => panic!("Expected QueryUnion, found {:?}", parsed.queries[1]),
+                _ => panic!(
+                    "Expected QueryUnion, found {:?}",
+                    parsed.subrequests[0].queries[1]
+                ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),
         }

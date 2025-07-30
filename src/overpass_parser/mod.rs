@@ -6,6 +6,7 @@ pub mod query_recurse;
 pub mod query_union;
 pub mod request;
 pub mod selectors;
+pub mod subrequest;
 
 use pest::Parser;
 use pest_derive::Parser;
