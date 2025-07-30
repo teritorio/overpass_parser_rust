@@ -96,7 +96,7 @@ impl Filter {
                         _ => {
                             return Err(pest::error::Error::new_from_span(
                                 pest::error::ErrorVariant::CustomError {
-                                    message: "Invalid rule for FilterAround".to_string(),
+                                    message: format!("Invalid rule {:?} for FilterAround", around_inner.as_rule()),
                                 },
                                 around_inner.as_span(),
                             ));
@@ -108,7 +108,7 @@ impl Filter {
             _ => {
                 return Err(pest::error::Error::new_from_span(
                     pest::error::ErrorVariant::CustomError {
-                        message: "Invalid rule for Filter".to_string(),
+                        message: format!("Invalid rule {:?} for Filter", pair.as_rule()),
                     },
                     pair.as_span(),
                 ));

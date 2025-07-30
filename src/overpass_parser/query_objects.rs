@@ -63,7 +63,10 @@ impl Query for QueryObjects {
                         _ => {
                             return Err(pest::error::Error::new_from_span(
                                 pest::error::ErrorVariant::CustomError {
-                                    message: "Invalid rule for QueryObjects".to_string(),
+                                    message: format!(
+                                        "Invalid rule {:?} for QueryObjects",
+                                        inner_pair.as_rule()
+                                    ),
                                 },
                                 inner_pair.as_span(),
                             ));
@@ -74,7 +77,7 @@ impl Query for QueryObjects {
             }
             _ => Err(pest::error::Error::new_from_span(
                 pest::error::ErrorVariant::CustomError {
-                    message: "Invalid rule for QueryObjects".to_string(),
+                    message: format!("Invalid rule {:?} for QueryObjects", pair.as_rule()),
                 },
                 pair.as_span(),
             )),

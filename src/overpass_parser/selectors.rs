@@ -56,7 +56,7 @@ impl Selector {
                 _ => {
                     return Err(pest::error::Error::new_from_span(
                         pest::error::ErrorVariant::CustomError {
-                            message: "Invalid rule for Selector".to_string(),
+                            message: format!("Invalid rule {:?} for Selector", inner_pair.as_rule()),
                         },
                         inner_pair.as_span(),
                     ));

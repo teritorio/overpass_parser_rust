@@ -45,7 +45,7 @@ impl Query for QueryType {
             }
             _ => Err(pest::error::Error::new_from_span(
                 pest::error::ErrorVariant::CustomError {
-                    message: "Invalid rule for QueryType".to_string(),
+                    message: format!("Invalid rule {:?} for QueryType", pair.as_rule()),
                 },
                 pair.as_span(),
             )),
@@ -101,7 +101,7 @@ impl Request {
                 _ => {
                     return Err(pest::error::Error::new_from_span(
                         pest::error::ErrorVariant::CustomError {
-                            message: "Invalid rule for Request".to_string(),
+                            message: format!("Invalid rule {:?} for Request", inner.as_rule()),
                         },
                         inner.as_span(),
                     ));

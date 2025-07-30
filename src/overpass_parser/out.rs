@@ -31,7 +31,7 @@ impl Out {
                 _ => {
                     return Err(pest::error::Error::new_from_span(
                         pest::error::ErrorVariant::CustomError {
-                            message: "Invalid rule for Out".to_string(),
+                            message: format!("Invalid rule {:?} for Out", inner_pair.as_rule()),
                         },
                         inner_pair.as_span(),
                     ));
