@@ -165,6 +165,42 @@ impl Selector {
             }
         }
     }
+
+    fn overpass_quote(&self, value: &str) -> String {
+        let simple_quote = value.contains('\'');
+        let double_quote = value.contains('"');
+        let id_char = Regex::new(r"^[-_a-zA-Z0-9]+$").unwrap().is_match(value);
+        if simple_quote || double_quote || !id_char {
+            if double_quote && !simple_quote {
+                format!("'{}'", value)
+            } else {
+                format!("\"{}\"", value.replace('"', "\\\""))
+            }
+        } else {
+            value.to_string()
+        }
+    }
+
+    pub fn to_overpass(&self) -> String {
+        let mut s = String::new();
+        s.push('[');
+        if let Some(op) = &self.operator {
+            s.push_str(self.overpass_quote(&self.key).as_str());
+            s.push_str(op);
+            if let Some(value) = &self.value {
+                s.push_str(self.overpass_quote(value).as_str());
+            } else if let Some(regex) = &self.value_regex {
+                s.push_str(self.overpass_quote(regex.as_str()).as_str())
+            }
+        } else {
+            if self.not {
+                s.push('!');
+            }
+            s.push_str(self.overpass_quote(&self.key).as_str());
+        }
+        s.push(']');
+        s
+    }
 }
 
 #[derive(Derivative)]
@@ -208,6 +244,16 @@ impl Selectors {
             .map(|selector| selector.to_sql(sql_dialect, srid))
             .collect::<Vec<String>>()
             .join(" AND ")
+    }
+
+    pub fn to_overpass(&self) -> String {
+        let mut overpass = self
+            .selectors
+            .iter()
+            .map(|selector| selector.to_overpass())
+            .collect::<Vec<String>>();
+        overpass.sort();
+        overpass.join("")
     }
 }
 
@@ -286,30 +332,31 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_matches_to_overpass() {
-    //     let selector = parse("[amenity]");
-    //     assert_eq!(selector.to_overpass(), "[amenity]");
+    #[test]
+    fn test_matches_to_overpass() {
+        let selector = parse("[amenity]");
+        assert_eq!(selector.to_overpass(), "[amenity]");
 
-    //     let selector = parse("[shop=florist]");
-    //     assert_eq!(selector.to_overpass(), "[shop=florist]");
+        let selector = parse("[shop=florist]");
+        assert_eq!(selector.to_overpass(), "[shop=florist]");
 
-    //     let selector = parse(r#"[shop~"pizza.*"]"#);
-    //     assert_eq!(selector.to_overpass(), r#"[shop~"pizza.*"]"#);
+        let selector = parse("[shop~\"pizza.*\"]");
+        assert_eq!(selector.to_overpass(), "[shop~\"pizza.*\"]");
 
-    //     let selector = parse("[highway=footway][footway=traffic_island]");
-    //     assert_eq!(
-    //         selector.to_overpass(),
-    //         "[highway=footway][footway=traffic_island]"
-    //     );
+        let selector = parse("[highway=footway][footway=traffic_island]");
+        assert_eq!(
+            selector.to_overpass(),
+            "[footway=traffic_island][highway=footway]"
+        );
 
-    //     let selector = parse("[!amenity]");
-    //     assert_eq!(selector.to_overpass(), "[!amenity]");
+        let selector = parse("[!amenity]");
+        assert_eq!(selector.to_overpass(), "[!amenity]");
 
-    //     // Sort test
-    //     let sorted_selector = parse("[amenity]").sort();
-    //     assert_eq!(sorted_selector.to_overpass(), "[amenity]");
-    // }
+        let selector = parse("[phone=+42]");
+        assert_eq!(selector.to_overpass(), "[phone=\"+42\"]");
+        let selector = parse("[p~4]");
+        assert_eq!(selector.to_overpass(), "[p~4]");
+    }
 
     #[test]
     fn test_matches_to_sql() {
