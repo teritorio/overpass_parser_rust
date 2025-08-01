@@ -218,9 +218,7 @@ mod tests {
 
     use crate::{
         overpass_parser::{parse_query, subrequest::QueryType},
-        sql_dialect::{
-            postgres::postgres::Postgres, sql_dialect::SqlDialect,
-        },
+        sql_dialect::{postgres::postgres::Postgres, sql_dialect::SqlDialect},
     };
 
     use super::Selectors;
@@ -342,14 +340,8 @@ mod tests {
     fn test_matches_to_sql_duckdb() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(
-            parse("[\"amenity\"]").to_sql(d, "4326"),
-            "tags?'amenity'"
-        );
-        assert_eq!(
-            parse("['amenity']").to_sql(d, "4326"),
-            "tags?'amenity'"
-        );
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "4326"), "tags?'amenity'");
         assert_eq!(
             parse("[shop=florist]").to_sql(d, "4326"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
