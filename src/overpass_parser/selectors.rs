@@ -13,11 +13,11 @@ use super::Rule;
 #[derive(Debug, Clone)]
 pub struct Selector {
     #[derivative(Default(value = "false"))]
-    not: bool,
-    key: Box<str>,
-    operator: Option<Box<str>>,
-    value: Option<Box<str>>,
-    value_regex: Option<Regex>,
+    pub not: bool,
+    pub key: Box<str>,
+    pub operator: Option<Box<str>>,
+    pub value: Option<Box<str>>,
+    pub value_regex: Option<Regex>,
 }
 
 impl Selector {

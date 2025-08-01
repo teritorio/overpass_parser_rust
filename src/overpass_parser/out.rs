@@ -11,10 +11,10 @@ use super::Rule;
 #[derive(Debug, Clone)]
 pub struct Out {
     #[derivative(Default(value = "\"geom\".into()"))]
-    geom: Box<str>,
+    pub geom: Box<str>,
 
     #[derivative(Default(value = "\"body\".into()"))]
-    level_of_details: Box<str>,
+    pub level_of_details: Box<str>,
 }
 
 impl Out {

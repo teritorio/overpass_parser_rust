@@ -11,19 +11,19 @@ use super::Rule;
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct FilterAround {
-    core: Box<str>,
-    radius: f64,
+    pub core: Box<str>,
+    pub radius: f64,
 }
 
 #[derive(Derivative)]
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct Filter {
-    bbox: Option<(f64, f64, f64, f64)>,
-    poly: Option<Vec<(f64, f64)>>,
-    ids: Option<Vec<i64>>,
-    area_id: Option<Box<str>>,
-    around: Option<FilterAround>,
+    pub bbox: Option<(f64, f64, f64, f64)>,
+    pub poly: Option<Vec<(f64, f64)>>,
+    pub ids: Option<Vec<i64>>,
+    pub area_id: Option<Box<str>>,
+    pub around: Option<FilterAround>,
 }
 
 impl Filter {
