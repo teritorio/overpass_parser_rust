@@ -10,6 +10,8 @@ use super::Rule;
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct Out {
+    pub set: Option<Box<str>>,
+
     #[derivative(Default(value = "\"geom\".into()"))]
     pub geom: Box<str>,
 
@@ -22,6 +24,9 @@ impl Out {
         let mut out = Out::default();
         for inner_pair in pair.into_inner() {
             match inner_pair.as_rule() {
+                Rule::ID => {
+                    out.set = Some(inner_pair.as_str().into());
+                }
                 Rule::out_geom => {
                     out.geom = inner_pair.as_str().into();
                 }

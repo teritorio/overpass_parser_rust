@@ -130,6 +130,11 @@ impl Subrequest {
             })
             .collect::<Vec<String>>();
         let with_join = with.join(",\n");
+        if let Some(out) = &self.out {
+            if let Some(set) = &out.set {
+                default_set = set.as_ref().into();
+            }
+        }
         let select = self
             .out
             .as_ref()
@@ -160,6 +165,24 @@ mod tests {
                 [foo~\"bar|baz\"]
                 (1, 2, 3, 4);
             out;";
+        match parse_query(query) {
+            Ok(request) => {
+                let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                let sql = request.to_sql(d, "4326", None);
+                assert_ne!("", sql);
+            }
+            Err(e) => {
+                println!("Error parsing query: {e}");
+                panic!("Parsing fails");
+            }
+        };
+    }
+
+    #[test]
+    fn test_out_set() {
+        let query = "
+            node(1)->.a;
+            .a out;";
         match parse_query(query) {
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
