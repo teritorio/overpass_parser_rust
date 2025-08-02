@@ -47,5 +47,5 @@ out_geom = { "geom" | "center" | "bb" }
 out_level_of_details = { "ids" | "skel" | "body" | "tags" | "meta" }
 out = { DOT_ID? ~ "out" ~ out_geom? ~ out_level_of_details? }
 
-subrequest = { ( query_sequence ~ ";" )+ ~ (out ~ ";")? }
-request = { (WHITESPACE | COMMENT)* ~ (metadata ~ ";" )? ~ subrequest+ }
+subrequest = { ((query_sequence | out) ~ ";")+  }
+request = { (WHITESPACE | COMMENT)* ~ (metadata ~ ";" )? ~ subrequest }

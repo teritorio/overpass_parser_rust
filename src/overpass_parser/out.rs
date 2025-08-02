@@ -10,22 +10,34 @@ use super::Rule;
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct Out {
-    pub set: Option<Box<str>>,
+    pub set: Box<str>,
 
     #[derivative(Default(value = "\"geom\".into()"))]
     pub geom: Box<str>,
 
     #[derivative(Default(value = "\"body\".into()"))]
     pub level_of_details: Box<str>,
+
+    pub assignation: Box<str>,
 }
 
 impl Out {
-    pub fn from_pest(pair: Pair<Rule>) -> Result<Self, pest::error::Error<Rule>> {
-        let mut out = Out::default();
+    pub fn asignation(&self) -> &str {
+        &self.assignation
+    }
+
+    pub fn from_pest(
+        pair: Pair<Rule>,
+        default_set: &str,
+    ) -> Result<Self, pest::error::Error<Rule>> {
+        let mut out = Out {
+            set: default_set.into(),
+            ..Default::default()
+        };
         for inner_pair in pair.into_inner() {
             match inner_pair.as_rule() {
                 Rule::ID => {
-                    out.set = Some(inner_pair.as_str().into());
+                    out.set = inner_pair.as_str().into();
                 }
                 Rule::out_geom => {
                     out.geom = inner_pair.as_str().into();
@@ -43,6 +55,7 @@ impl Out {
                 }
             }
         }
+        out.assignation = format!("out_{}", out.set).as_str().into();
         Ok(out)
     }
 
@@ -155,7 +168,9 @@ FROM {st_dump_points}(geom))",
     'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
     'id', id,
     'lon', CASE osm_type WHEN 'n' THEN ST_X({st_transform_reverse})::numeric END,
-    'lat', CASE osm_type WHEN 'n' THEN ST_Y({st_transform_reverse})::numeric END{meta_fields}{geom_center}{geom_bb_geom}{geom}{way_member_nodes_field}{relations_members_field}{tags_field})) AS j")
+    'lat', CASE osm_type WHEN 'n' THEN ST_Y({st_transform_reverse})::numeric END{meta_fields}{geom_center}{geom_bb_geom}{geom}{way_member_nodes_field}{relations_members_field}{tags_field})) AS j
+FROM
+    _{}", self.set)
     }
 }
 
@@ -171,16 +186,15 @@ mod tests {
         let query = "
             [out:json][timeout:25];
             node(1573900912)->.a;
-            out geom;
+            .a out geom;
             node(1573900912)->.b;
-            out geom;
+            .b out geom;
         ";
         match parse_query(query) {
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
                 assert_eq!("SET statement_timeout = 25000;
-(
 WITH
 _a AS (
     SELECT
@@ -190,33 +204,31 @@ _a AS (
     WHERE
         osm_type = 'n' AND
         id = ANY (ARRAY[1573900912])
-)
-SELECT
-    jsonb_strip_nulls(jsonb_build_object(
-    'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
-    'id', id,
-    'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
-    'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
-    'bounds', CASE osm_type = 'w' OR osm_type = 'r'
-    WHEN true THEN jsonb_build_object(
-        'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
-    )
-    END,
-    'geometry', CASE osm_type
-        WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
-    END,
-    'nodes', nodes,
-    'members', members,
-    'tags', tags)) AS j
-FROM
-    _a
-
-) UNION ALL (
-
-WITH
+),
+_out_a AS (
+    SELECT
+        jsonb_strip_nulls(jsonb_build_object(
+        'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
+        'id', id,
+        'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
+        'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
+        'bounds', CASE osm_type = 'w' OR osm_type = 'r'
+        WHEN true THEN jsonb_build_object(
+            'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+        )
+        END,
+        'geometry', CASE osm_type
+            WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
+        END,
+        'nodes', nodes,
+        'members', members,
+        'tags', tags)) AS j
+    FROM
+        _a
+),
 _b AS (
     SELECT
         *
@@ -225,30 +237,34 @@ _b AS (
     WHERE
         osm_type = 'n' AND
         id = ANY (ARRAY[1573900912])
+),
+_out_b AS (
+    SELECT
+        jsonb_strip_nulls(jsonb_build_object(
+        'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
+        'id', id,
+        'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
+        'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
+        'bounds', CASE osm_type = 'w' OR osm_type = 'r'
+        WHEN true THEN jsonb_build_object(
+            'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
+            'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+        )
+        END,
+        'geometry', CASE osm_type
+            WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
+        END,
+        'nodes', nodes,
+        'members', members,
+        'tags', tags)) AS j
+    FROM
+        _b
 )
-SELECT
-    jsonb_strip_nulls(jsonb_build_object(
-    'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
-    'id', id,
-    'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
-    'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
-    'bounds', CASE osm_type = 'w' OR osm_type = 'r'
-    WHEN true THEN jsonb_build_object(
-        'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-        'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
-    )
-    END,
-    'geometry', CASE osm_type
-        WHEN 'w' THEN (SELECT jsonb_agg(jsonb_build_object('lon', ST_X(ST_Transform(geom, 4326))::numeric, 'lat', ST_Y(ST_Transform(geom, 4326))::numeric)) FROM ST_DumpPoints(geom))
-    END,
-    'nodes', nodes,
-    'members', members,
-    'tags', tags)) AS j
-FROM
-    _b
-)
+SELECT * FROM _out_a
+UNION ALL
+SELECT * FROM _out_b
 ;", sql);
             }
             Err(e) => {

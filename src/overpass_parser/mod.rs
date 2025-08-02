@@ -41,7 +41,7 @@ mod tests {
           nwr[a=\"Ñ'\"][b='\"'](area.a)->.x;
           nwr[c](area.a)->.z;
         )->.k;
-        out center meta;";
+        .k out center meta;";
 
         let request = parse_query(query).expect("Failed to parse query");
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
@@ -85,29 +85,32 @@ _k AS (
     ) AS t
     ORDER BY
         osm_type, id
+),
+_out_k AS (
+    SELECT
+        jsonb_strip_nulls(jsonb_build_object(
+        'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
+        'id', id,
+        'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
+        'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
+        'timestamp', created,
+        'version', version,
+        'changeset', changeset,
+        'user', \"user\",
+        'uid', uid,
+        'center', CASE osm_type = 'w' OR osm_type = 'r'
+            WHEN true THEN jsonb_build_object(
+                'lon', ST_X(ST_PointOnSurface(ST_Transform(geom, 4326)))::numeric,
+                'lat', ST_Y(ST_PointOnSurface(ST_Transform(geom, 4326)))::numeric
+            )
+        END,
+        'nodes', nodes,
+        'members', members,
+        'tags', tags)) AS j
+    FROM
+        _k
 )
-SELECT
-    jsonb_strip_nulls(jsonb_build_object(
-    'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
-    'id', id,
-    'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 4326))::numeric END,
-    'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
-    'timestamp', created,
-    'version', version,
-    'changeset', changeset,
-    'user', \"user\",
-    'uid', uid,
-    'center', CASE osm_type = 'w' OR osm_type = 'r'
-        WHEN true THEN jsonb_build_object(
-            'lon', ST_X(ST_PointOnSurface(ST_Transform(geom, 4326)))::numeric,
-            'lat', ST_Y(ST_PointOnSurface(ST_Transform(geom, 4326)))::numeric
-        )
-    END,
-    'nodes', nodes,
-    'members', members,
-    'tags', tags)) AS j
-FROM
-    _k
+SELECT * FROM _out_k
 ;",
 sql);
     }

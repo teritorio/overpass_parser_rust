@@ -23,12 +23,23 @@ pub struct QueryObjects {
     #[derivative(Default(
         value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
     ))]
-    pub asignation: Box<str>,
+    pub default_asignation: Box<str>,
+    pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryObjects {
+    fn default_asignation(&self) -> Option<&str> {
+        match self.asignation {
+            None => Some(&self.default_asignation),
+            _ => None,
+        }
+    }
+
     fn asignation(&self) -> &str {
-        self.asignation.as_ref()
+        self.asignation
+            .as_ref()
+            .map(|s| s.as_ref())
+            .unwrap_or(&self.default_asignation)
     }
 
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
@@ -53,12 +64,14 @@ impl Query for QueryObjects {
                             query_objects.set = Some(inner_pair.as_str().into());
                         }
                         Rule::asignation => {
-                            query_objects.asignation = inner_pair
-                                .into_inner()
-                                .find(|p| p.as_rule() == Rule::ID)
-                                .map(|p| p.as_str())
-                                .unwrap()
-                                .into();
+                            query_objects.asignation = Some(
+                                inner_pair
+                                    .into_inner()
+                                    .find(|p| p.as_rule() == Rule::ID)
+                                    .map(|p| p.as_str())
+                                    .unwrap()
+                                    .into(),
+                            );
                         }
                         _ => {
                             return Err(pest::error::Error::new_from_span(
@@ -141,18 +154,27 @@ FROM
 mod tests {
     use super::*;
     use crate::{
-        overpass_parser::{parse_query, subrequest::QueryType},
+        overpass_parser::{
+            parse_query,
+            subrequest::{QueryType, SubrequestType},
+        },
         sql_dialect::postgres::postgres::Postgres,
     };
     use pretty_assertions::assert_eq;
 
     fn parse(query: &str) -> QueryObjects {
         match parse_query(format!("{query};").as_str()) {
-            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
-                QueryType::QueryObjects(query_objets) => query_objets.clone(),
+            Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
+                SubrequestType::QueryType(query_type) => match query_type {
+                    QueryType::QueryObjects(query_objets) => query_objets.clone(),
+                    _ => panic!(
+                        "Expected a QueryObjects, got {:?}",
+                        parsed.subrequest.queries[0]
+                    ),
+                },
                 _ => panic!(
-                    "Expected a QueryObjects, got {:?}",
-                    parsed.subrequests[0].queries[0]
+                    "Expected QueryObjects, found {:?}",
+                    parsed.subrequest.queries[0]
                 ),
             },
 
