@@ -18,12 +18,23 @@ pub struct QueryUnion {
     #[derivative(Default(
         value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
     ))]
-    pub asignation: Box<str>,
+    pub default_asignation: Box<str>,
+    pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryUnion {
+    fn default_asignation(&self) -> Option<&str> {
+        match self.asignation {
+            None => Some(&self.default_asignation),
+            _ => None,
+        }
+    }
+
     fn asignation(&self) -> &str {
-        self.asignation.as_ref()
+        self.asignation
+            .as_ref()
+            .map(|s| s.as_ref())
+            .unwrap_or(&self.default_asignation)
     }
 
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
@@ -39,12 +50,14 @@ impl Query for QueryUnion {
                     }
                 }
                 Rule::asignation => {
-                    query_union.asignation = inner_pair
-                        .into_inner()
-                        .find(|p| p.as_rule() == Rule::ID)
-                        .map(|p| p.as_str())
-                        .unwrap()
-                        .into();
+                    query_union.asignation = Some(
+                        inner_pair
+                            .into_inner()
+                            .find(|p| p.as_rule() == Rule::ID)
+                            .map(|p| p.as_str())
+                            .unwrap()
+                            .into(),
+                    );
                 }
                 _ => panic!("Unexpected rule in QueryUnion: {:?}", inner_pair.as_rule()),
             }
@@ -97,16 +110,25 @@ ORDER BY
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{overpass_parser::parse_query, sql_dialect::postgres::postgres::Postgres};
+    use crate::{
+        overpass_parser::{parse_query, subrequest::SubrequestType},
+        sql_dialect::postgres::postgres::Postgres,
+    };
     use pretty_assertions::assert_eq;
 
     fn parse(query: &str) -> QueryUnion {
         match parse_query(query) {
-            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
-                QueryType::QueryUnion(query_union) => query_union.clone(),
+            Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
+                SubrequestType::QueryType(query_type) => match query_type {
+                    QueryType::QueryUnion(query_union) => query_union.clone(),
+                    _ => panic!(
+                        "Expected QueryUnion, found {:?}",
+                        parsed.subrequest.queries[1]
+                    ),
+                },
                 _ => panic!(
                     "Expected QueryUnion, found {:?}",
-                    parsed.subrequests[0].queries[1]
+                    parsed.subrequest.queries[0]
                 ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),

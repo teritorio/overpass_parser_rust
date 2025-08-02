@@ -18,12 +18,23 @@ pub struct QueryRecurse {
     #[derivative(Default(
         value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
     ))]
-    pub asignation: Box<str>,
+    pub default_asignation: Box<str>,
+    pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryRecurse {
+    fn default_asignation(&self) -> Option<&str> {
+        match self.asignation {
+            None => Some(&self.default_asignation),
+            _ => None,
+        }
+    }
+
     fn asignation(&self) -> &str {
-        self.asignation.as_ref()
+        self.asignation
+            .as_ref()
+            .map(|s| s.as_ref())
+            .unwrap_or(&self.default_asignation)
     }
 
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
@@ -34,12 +45,14 @@ impl Query for QueryRecurse {
                     query_recurse.recurse = inner_pair.as_str().into();
                 }
                 Rule::asignation => {
-                    query_recurse.asignation = inner_pair
-                        .into_inner()
-                        .find(|p| p.as_rule() == Rule::ID)
-                        .map(|p| p.as_str())
-                        .unwrap()
-                        .into()
+                    query_recurse.asignation = Some(
+                        inner_pair
+                            .into_inner()
+                            .find(|p| p.as_rule() == Rule::ID)
+                            .map(|p| p.as_str())
+                            .unwrap()
+                            .into(),
+                    )
                 }
                 _ => {
                     return Err(pest::error::Error::new_from_span(
@@ -106,18 +119,24 @@ WHERE
 mod tests {
     use super::*;
     use crate::overpass_parser::parse_query;
-    use crate::overpass_parser::subrequest::QueryType;
+    use crate::overpass_parser::subrequest::{QueryType, SubrequestType};
 
     use crate::sql_dialect::postgres::postgres::Postgres;
     use pretty_assertions::assert_eq;
 
     fn parse(query: &str) -> QueryRecurse {
         match parse_query(query) {
-            Ok(parsed) => match parsed.subrequests[0].queries[1].as_ref() {
-                QueryType::QueryRecurse(query_recurse) => query_recurse.clone(),
+            Ok(parsed) => match parsed.subrequest.queries[1].as_ref() {
+                SubrequestType::QueryType(query_type) => match query_type {
+                    QueryType::QueryRecurse(query_recurse) => query_recurse.clone(),
+                    _ => panic!(
+                        "Expected QueryRecurse, found {:?}",
+                        parsed.subrequest.queries[1]
+                    ),
+                },
                 _ => panic!(
                     "Expected QueryRecurse, found {:?}",
-                    parsed.subrequests[0].queries[1]
+                    parsed.subrequest.queries[1]
                 ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),

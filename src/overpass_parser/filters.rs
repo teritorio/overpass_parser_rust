@@ -96,7 +96,10 @@ impl Filter {
                         _ => {
                             return Err(pest::error::Error::new_from_span(
                                 pest::error::ErrorVariant::CustomError {
-                                    message: format!("Invalid rule {:?} for FilterAround", around_inner.as_rule()),
+                                    message: format!(
+                                        "Invalid rule {:?} for FilterAround",
+                                        around_inner.as_rule()
+                                    ),
                                 },
                                 around_inner.as_span(),
                             ));
@@ -263,25 +266,34 @@ impl Filters {
 mod tests {
     use super::*;
     use crate::{
-        overpass_parser::{parse_query, subrequest::QueryType},
+        overpass_parser::{
+            parse_query,
+            subrequest::{QueryType, SubrequestType},
+        },
         sql_dialect::postgres::postgres::Postgres,
     };
     use pretty_assertions::assert_eq;
 
     fn parse(query: &str) -> Filter {
         match parse_query(format!("node{query};").as_str()) {
-            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
-                QueryType::QueryObjects(query_objets) => query_objets
-                    .filters
-                    .as_ref()
-                    .unwrap()
-                    .filters
-                    .first()
-                    .unwrap()
-                    .clone(),
+            Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
+                SubrequestType::QueryType(query_type) => match query_type {
+                    QueryType::QueryObjects(query_objets) => query_objets
+                        .filters
+                        .as_ref()
+                        .unwrap()
+                        .filters
+                        .first()
+                        .unwrap()
+                        .clone(),
+                    _ => panic!(
+                        "Expected a QueryObjects, got {:?}",
+                        parsed.subrequest.queries[0]
+                    ),
+                },
                 _ => panic!(
-                    "Expected a QueryObjects, got {:?}",
-                    parsed.subrequests[0].queries[0]
+                    "Expected a QueryType, got {:?}",
+                    parsed.subrequest.queries[0]
                 ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),

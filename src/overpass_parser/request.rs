@@ -12,7 +12,7 @@ use super::{Rule, subrequest::Subrequest};
 pub struct Request {
     #[derivative(Default(value = "Some(160)"))]
     pub timeout: Option<u32>,
-    pub subrequests: Vec<Subrequest>,
+    pub subrequest: Subrequest,
 }
 
 impl Request {
@@ -28,7 +28,7 @@ impl Request {
                 }
                 Rule::subrequest => {
                     match Subrequest::from_pest(inner) {
-                        Ok(subrequest) => request.subrequests.push(subrequest),
+                        Ok(subrequest) => request.subrequest = subrequest,
                         Err(e) => return Err(e),
                     };
                 }
@@ -51,24 +51,9 @@ impl Request {
         srid: &str,
         finalizer: Option<&str>,
     ) -> String {
-        let union_all = self
-            .subrequests
-            .iter()
-            .map(|subrequest| subrequest.to_sql(sql_dialect, srid))
-            .collect::<Vec<String>>();
-        // if finalizer.is_some() {
-        //     let mut finalizer = finalizer.unwrap().replace("{{query}}", &default_set);
-        //     finalizer = replace.replace_all(&finalizer, "  ").to_string();
-        //     with.push(format!("__finalizer AS (\n{finalizer}\n)"));
-        //     default_set = "__finalizer".into();
-        // };
+        let select = self.subrequest.to_sql(sql_dialect, srid);
         let timeout = sql_dialect.statement_timeout(self.timeout.unwrap_or(180).min(500) * 1000);
-        if union_all.len() == 1 {
-            format!("{timeout}\n{}\n;", union_all[0])
-        } else {
-            let select = union_all.join("\n\n) UNION ALL (\n\n");
-            format!("{timeout}\n(\n{select}\n)\n;")
-        }
+        format!("{timeout}\n{select}\n;")
     }
 }
 

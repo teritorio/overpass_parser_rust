@@ -172,7 +172,7 @@ impl Selector {
         let id_char = Regex::new(r"^[-_a-zA-Z0-9]+$").unwrap().is_match(value);
         if simple_quote || double_quote || !id_char {
             if double_quote && !simple_quote {
-                format!("'{}'", value)
+                format!("'{value}'")
             } else {
                 format!("\"{}\"", value.replace('"', "\\\""))
             }
@@ -263,7 +263,10 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        overpass_parser::{parse_query, subrequest::QueryType},
+        overpass_parser::{
+            parse_query,
+            subrequest::{QueryType, SubrequestType},
+        },
         sql_dialect::{postgres::postgres::Postgres, sql_dialect::SqlDialect},
     };
 
@@ -271,11 +274,17 @@ mod tests {
 
     fn parse(query: &str) -> Selectors {
         match parse_query(format!("node{query};").as_str()) {
-            Ok(parsed) => match parsed.subrequests[0].queries[0].as_ref() {
-                QueryType::QueryObjects(query_objets) => query_objets.selectors.clone(),
+            Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
+                SubrequestType::QueryType(query_type) => match query_type {
+                    QueryType::QueryObjects(query_objets) => query_objets.selectors.clone(),
+                    _ => panic!(
+                        "Expected a QueryObjects, got {:?}",
+                        parsed.subrequest.queries[0]
+                    ),
+                },
                 _ => panic!(
                     "Expected a QueryObjects, got {:?}",
-                    parsed.subrequests[0].queries[0]
+                    parsed.subrequest.queries[0]
                 ),
             },
             Err(e) => panic!("Failed to parse query: {e}"),
