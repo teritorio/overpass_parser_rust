@@ -5,15 +5,15 @@ pub mod postgres {
 
     #[derive(Derivative)]
     #[derivative(Default)]
-    #[derive(Debug)]
+    // #[derive(Debug)]
     pub struct Postgres {
-        pub postgres_escape_literal: Option<fn(&str) -> String>,
+        pub postgres_escape_literal: Option<Box<dyn Fn(&str) -> String + Send + Sync>>,
     }
 
     impl SqlDialect for Postgres {
         fn escape_literal(&self, string: &str) -> String {
             if self.postgres_escape_literal.is_some() {
-                (self.postgres_escape_literal.unwrap())(string)
+                (self.postgres_escape_literal.as_ref().unwrap())(string)
             } else {
                 format!("'{}'", string.replace('\'', "''"))
             }

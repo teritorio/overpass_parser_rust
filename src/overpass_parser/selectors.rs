@@ -114,7 +114,7 @@ impl Selector {
             let value = match self.value.as_deref() {
                 Some(value) => sql_dialect.escape_literal(value),
                 None => match self.value_regex.as_ref() {
-                    Some(regex) => format!("'{}'", regex.as_str()),
+                    Some(regex) => sql_dialect.escape_literal(regex.as_str()),
                     None => panic!("Selector without value or value_regex"),
                 },
             };
@@ -411,9 +411,14 @@ mod tests {
             parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
             "(tags?'name' AND tags->>'name' = 'l''l')"
         );
+        let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+        assert_eq!(
+            parse(r#"[name~"l'l"]"#).to_sql(d, "4326"),
+            "(tags?'name' AND tags->>'name' ~ 'l''l')"
+        );
 
         let d = &Postgres {
-            postgres_escape_literal: Some(|s| format!("_{s}_")),
+            postgres_escape_literal: Some(Box::new(|s| format!("_{s}_"))),
         } as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
             parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
