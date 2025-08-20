@@ -200,7 +200,7 @@ _a AS (
     SELECT
         *
     FROM
-        node
+        node_by_id
     WHERE
         osm_type = 'n' AND
         id = ANY (ARRAY[1573900912])
@@ -233,7 +233,7 @@ _b AS (
     SELECT
         *
     FROM
-        node
+        node_by_id
     WHERE
         osm_type = 'n' AND
         id = ANY (ARRAY[1573900912])

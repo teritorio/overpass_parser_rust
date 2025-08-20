@@ -253,6 +253,10 @@ impl Filters {
         Ok(Filters { filters })
     }
 
+    pub fn has_ids(&self) -> bool {
+        self.filters.iter().any(|f| f.ids.is_some())
+    }
+
     pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
         self.filters
             .iter()

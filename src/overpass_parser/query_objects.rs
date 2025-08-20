@@ -104,13 +104,18 @@ impl Query for QueryObjects {
         default_set: &str,
     ) -> String {
         let p: String;
-        let from = if self.set.is_none() {
-            self.object_type.as_ref()
+        let from: String = if self.set.is_none() {
+            let from: String = self.object_type.clone().into();
+            if self.filters.is_some() && self.filters.as_ref().unwrap().has_ids() {
+                format!("{from}_by_id")
+            } else {
+                format!("{from}_by_geom")
+            }
         } else if self.set == Some("_".into()) {
-            default_set
+            default_set.into()
         } else {
             p = format!("_{}", self.set.as_ref().unwrap());
-            p.as_str()
+            p
         };
 
         let mut where_clauses = Vec::new();

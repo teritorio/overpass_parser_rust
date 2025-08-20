@@ -145,7 +145,7 @@ _a AS (
 SELECT
     *
 FROM
-    node
+    node_by_geom
 WHERE
     osm_type = 'n'
 ),
@@ -153,7 +153,7 @@ _b AS (
 SELECT
     *
 FROM
-    way
+    way_by_geom
 WHERE
     osm_type = 'w'
 )

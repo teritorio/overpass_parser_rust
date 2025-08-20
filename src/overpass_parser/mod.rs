@@ -53,7 +53,7 @@ _a AS (
     SELECT
         *
     FROM
-        area
+        area_by_id
     WHERE
         id = ANY (ARRAY[3600166718])
 ),
@@ -63,7 +63,7 @@ _k AS (
     SELECT
         *
     FROM
-        nwr
+        nwr_by_geom
     WHERE
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
         ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))
@@ -72,7 +72,7 @@ _k AS (
     SELECT
         *
     FROM
-        nwr
+        nwr_by_geom
     WHERE
         tags?'c' AND
         ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))
