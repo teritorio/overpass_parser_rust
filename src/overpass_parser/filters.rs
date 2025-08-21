@@ -125,7 +125,7 @@ impl Filter {
         bbox: (f64, f64, f64, f64),
         srid: &str,
     ) -> String {
-        sql_dialect.st_intersects_extent(
+        sql_dialect.st_intersects_extent_with_geom(
             sql_dialect
                 .st_transform(
                     &format!(
@@ -135,7 +135,6 @@ impl Filter {
                     srid,
                 )
                 .as_str(),
-            "geom",
         )
     }
 
@@ -149,9 +148,8 @@ impl Filter {
             .map(|&(lat, lon)| format!("{lon} {lat}"))
             .collect::<Vec<String>>()
             .join(", ");
-        sql_dialect.st_intersects(
+        sql_dialect.st_intersects_with_geom(
             &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({coords})'::geometry"), srid),
-            "geom",
         )
     }
 
@@ -178,27 +176,24 @@ impl Filter {
                 ) + 180) / 6)
             "
         );
-        sql_dialect.st_intersects(
-            "geom",
-            &sql_dialect.st_transform(
-                &format!(
-                    "
+        sql_dialect.st_intersects_with_geom(&sql_dialect.st_transform(
+            &format!(
+                "
         ST_Buffer(
             {},
             {}
         )",
-                    sql_dialect.st_transform(
-                        &format!(
-                            "
+                sql_dialect.st_transform(
+                    &format!(
+                        "
                 {core_geom}"
-                        ),
-                        &utm_zone
                     ),
-                    around.radius
+                    &utm_zone
                 ),
-                srid,
+                around.radius
             ),
-        )
+            srid,
+        ))
     }
 
     pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
@@ -221,8 +216,7 @@ impl Filter {
         }
         if let Some(area_id) = &self.area_id {
             clauses.push(
-                sql_dialect.st_intersects(
-                    "geom",
+                sql_dialect.st_intersects_with_geom(
                     format!(
                         "(SELECT {}(geom) FROM _{})",
                         sql_dialect.st_union(),
@@ -330,14 +324,13 @@ mod tests {
         );
         assert_eq!(
             "ST_Intersects(
-        geom,
-        (SELECT ST_Union(geom) FROM _a)
+        (SELECT ST_Union(geom) FROM _a),
+        geom
     )",
             parse("(area.a)").to_sql(d, "4326")
         );
         assert_eq!(
             "ST_Intersects(
-        geom,
         ST_Transform(
             ST_Buffer(
                 ST_Transform(
@@ -352,7 +345,8 @@ mod tests {
                     ) + 180) / 6)
                 ),
                 12.3
-            ), 4326)
+            ), 4326),
+        geom
     )",
             parse("(around.a:12.3)").to_sql(d, "4326")
         );

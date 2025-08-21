@@ -44,18 +44,26 @@ pub mod duckdb {
             None
         }
 
-        fn st_intersects(&self, geom_a: &str, geom_b: &str) -> String {
-            format!("ST_Intersects(
-    {geom_a},
-    {geom_b}
-)")
+        fn st_intersects_with_geom(&self, geom: &str) -> String {
+            vec![
+                self.st_intersects_extent_with_geom(geom),
+                format!(
+                    "ST_Intersects(
+        {geom},
+        geom
+    )"
+                ),
+            ]
+            .join(" AND\n")
         }
 
-        fn st_intersects_extent(&self, geom_a: &str, geom_b: &str) -> String {
-            format!("ST_Intersects_Extent(
-    {geom_a},
-    {geom_b}
-)")
+        fn st_intersects_extent_with_geom(&self, geom: &str) -> String {
+            format!(
+                "bbox.xmin <= ST_XMax({geom}) AND
+bbox.xmax >= ST_XMin({geom}) AND
+bbox.ymin <= ST_YMax({geom}) AND
+bbox.ymax >= ST_YMin({geom})"
+            )
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {

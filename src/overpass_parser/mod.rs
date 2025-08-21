@@ -67,8 +67,8 @@ _k AS (
     WHERE
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
         ST_Intersects(
-            geom,
-            (SELECT ST_Union(geom) FROM _a)
+            (SELECT ST_Union(geom) FROM _a),
+            geom
         )
     ),
     _z AS (
@@ -79,8 +79,8 @@ _k AS (
     WHERE
         tags?'c' AND
         ST_Intersects(
-            geom,
-            (SELECT ST_Union(geom) FROM _a)
+            (SELECT ST_Union(geom) FROM _a),
+            geom
         )
     )
     SELECT DISTINCT ON(osm_type, id)
