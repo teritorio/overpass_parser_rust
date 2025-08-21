@@ -79,7 +79,7 @@ impl Query for QueryRecurse {
         format!("SELECT
     way.*
 FROM
-    {default_set} AS way
+    _{default_set} AS way
     JOIN node ON
         node.id = ANY(way.nodes) AND
         node.geom && way.geom
@@ -89,7 +89,7 @@ UNION ALL
 SELECT
     node.*
 FROM
-    {default_set} AS relation
+    _{default_set} AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
     ) AS members ON
@@ -102,7 +102,7 @@ UNION ALL
 SELECT
     way.*
 FROM
-    {default_set} AS relation
+    _{default_set} AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'w'
     ) AS members ON
@@ -151,7 +151,7 @@ mod tests {
             "SELECT
     way.*
 FROM
-    _ AS way
+    __ AS way
     JOIN node ON
         node.id = ANY(way.nodes) AND
         node.geom && way.geom
@@ -161,7 +161,7 @@ UNION ALL
 SELECT
     node.*
 FROM
-    _ AS relation
+    __ AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
     ) AS members ON
@@ -174,7 +174,7 @@ UNION ALL
 SELECT
     way.*
 FROM
-    _ AS relation
+    __ AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'w'
     ) AS members ON
