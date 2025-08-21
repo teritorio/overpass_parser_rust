@@ -51,12 +51,18 @@ pub mod postgres {
             Some("ST_DumpPoints".to_string())
         }
 
-        fn st_intersects(&self) -> String {
-            "ST_Intersects".to_string()
+        fn st_intersects(&self, geom_a: &str, geom_b: &str) -> String {
+            format!("ST_Intersects(
+    {geom_a},
+    {geom_b}
+)")
         }
 
-        fn st_intersects_extent(&self) -> String {
-            "ST_Intersects".to_string()
+        fn st_intersects_extent(&self, geom_a: &str, geom_b: &str) -> String {
+            format!("ST_Intersects(
+    {geom_a},
+    {geom_b}
+)")
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {

@@ -125,16 +125,17 @@ impl Filter {
         bbox: (f64, f64, f64, f64),
         srid: &str,
     ) -> String {
-        format!(
-            "{}({}, geom)",
-            sql_dialect.st_intersects_extent(),
-            sql_dialect.st_transform(
-                &format!(
-                    "ST_Envelope('SRID=4326;LINESTRING({} {}, {} {})'::geometry)",
-                    bbox.1, bbox.0, bbox.3, bbox.2
-                ),
-                srid
-            )
+        sql_dialect.st_intersects_extent(
+            sql_dialect
+                .st_transform(
+                    &format!(
+                        "ST_Envelope('SRID=4326;LINESTRING({} {}, {} {})'::geometry)",
+                        bbox.1, bbox.0, bbox.3, bbox.2
+                    ),
+                    srid,
+                )
+                .as_str(),
+            "geom",
         )
     }
 
@@ -148,10 +149,9 @@ impl Filter {
             .map(|&(lat, lon)| format!("{lon} {lat}"))
             .collect::<Vec<String>>()
             .join(", ");
-        format!(
-            "{}({}, geom)",
-            sql_dialect.st_intersects(),
-            sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({coords})'::geometry"), srid)
+        sql_dialect.st_intersects(
+            &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({coords})'::geometry"), srid),
+            "geom",
         )
     }
 
@@ -178,13 +178,9 @@ impl Filter {
                 ) + 180) / 6)
             "
         );
-        format!(
-            "{}(
-    geom,
-    {}
-)",
-            sql_dialect.st_intersects(),
-            sql_dialect.st_transform(
+        sql_dialect.st_intersects(
+            "geom",
+            &sql_dialect.st_transform(
                 &format!(
                     "
         ST_Buffer(
@@ -200,7 +196,7 @@ impl Filter {
                     ),
                     around.radius
                 ),
-                srid
+                srid,
             ),
         )
     }
@@ -224,18 +220,27 @@ impl Filter {
             ));
         }
         if let Some(area_id) = &self.area_id {
-            clauses.push(format!(
-                "{}(geom, (SELECT {}(geom) FROM _{}))",
-                sql_dialect.st_intersects(),
-                sql_dialect.st_union(),
-                area_id
-            ));
+            clauses.push(
+                sql_dialect.st_intersects(
+                    "geom",
+                    format!(
+                        "(SELECT {}(geom) FROM _{})",
+                        sql_dialect.st_union(),
+                        area_id
+                    )
+                    .as_str(),
+                ),
+            );
         }
         if let Some(around) = &self.around {
             clauses.push(self.around_clause(sql_dialect, srid, around));
         }
 
-        clauses.join(" AND ")
+        clauses
+            .into_iter()
+            .map(|c| c.replace("\n", "\n    "))
+            .collect::<Vec<String>>()
+            .join(" AND ")
     }
 }
 
@@ -309,7 +314,10 @@ mod tests {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         assert_eq!(
-            "ST_Intersects(ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326), geom)",
+            "ST_Intersects(
+        ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326),
+        geom
+    )",
             parse("(-1.1,2,3,4)").to_sql(d, "4326")
         );
         assert_eq!(
@@ -321,28 +329,31 @@ mod tests {
             parse("(id:1,2,3)").to_sql(d, "4326")
         );
         assert_eq!(
-            "ST_Intersects(geom, (SELECT ST_Union(geom) FROM _a))",
+            "ST_Intersects(
+        geom,
+        (SELECT ST_Union(geom) FROM _a)
+    )",
             parse("(area.a)").to_sql(d, "4326")
         );
         assert_eq!(
             "ST_Intersects(
-    geom,
-    ST_Transform(
-        ST_Buffer(
-            ST_Transform(
-                (SELECT ST_Union(geom) FROM _a),\x20
-                -- Calculate UTM zone from
-                32600 +
-                CASE WHEN ST_Y(ST_Centroid(
-                    (SELECT ST_Union(geom) FROM _a)
-                )) >= 0 THEN 1 ELSE 31 END +
-                floor(ST_X(ST_Centroid(
-                    (SELECT ST_Union(geom) FROM _a)
-                ) + 180) / 6)
-            ),
-            12.3
-        ), 4326)
-)",
+        geom,
+        ST_Transform(
+            ST_Buffer(
+                ST_Transform(
+                    (SELECT ST_Union(geom) FROM _a),\x20
+                    -- Calculate UTM zone from
+                    32600 +
+                    CASE WHEN ST_Y(ST_Centroid(
+                        (SELECT ST_Union(geom) FROM _a)
+                    )) >= 0 THEN 1 ELSE 31 END +
+                    floor(ST_X(ST_Centroid(
+                        (SELECT ST_Union(geom) FROM _a)
+                    ) + 180) / 6)
+                ),
+                12.3
+            ), 4326)
+    )",
             parse("(around.a:12.3)").to_sql(d, "4326")
         );
     }
