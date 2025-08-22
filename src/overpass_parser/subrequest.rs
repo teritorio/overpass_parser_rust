@@ -148,13 +148,13 @@ impl Subrequest {
             .queries
             .iter()
             .map(|query| {
-                let set = query.as_ref().asignation();
                 let mut sql = match query.as_ref() {
                     SubrequestType::QueryType(query_type) => {
+                        let q = query_type.to_sql(sql_dialect, srid, previous_default_set);
                         if let Some(default_asignation) = query_type.default_asignation() {
                             previous_default_set = default_asignation;
                         }
-                        query_type.to_sql(sql_dialect, srid, previous_default_set)
+                        q
                     }
                     SubrequestType::Out(out) => {
                         outs.push(&*out.set);
@@ -162,6 +162,7 @@ impl Subrequest {
                     }
                 };
                 sql = replace.replace_all(&sql, "    ").to_string();
+                let set = query.as_ref().asignation();
                 format!("_{set} AS (\n{sql}\n)")
             })
             .collect::<Vec<String>>();
@@ -170,9 +171,7 @@ impl Subrequest {
             .queries
             .iter()
             .filter_map(|query| match query.as_ref() {
-                SubrequestType::Out(out) => {
-                    Some(format!("SELECT * FROM _{}", out.asignation()))
-                }
+                SubrequestType::Out(out) => Some(format!("SELECT * FROM _{}", out.asignation())),
                 _ => None,
             })
             .collect::<Vec<String>>()
@@ -185,6 +184,7 @@ impl Subrequest {
 #[cfg(test)]
 mod tests {
     use crate::{overpass_parser::parse_query, sql_dialect::postgres::postgres::Postgres};
+    use pretty_assertions::assert_eq;
 
     use super::*;
 
@@ -202,6 +202,73 @@ mod tests {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
                 assert_ne!("", sql);
+            }
+            Err(e) => {
+                println!("Error parsing query: {e}");
+                panic!("Parsing fails");
+            }
+        };
+    }
+
+    #[test]
+    fn test_recursive() {
+        let query = "
+            node(id:1)->.a;
+            .a >->.b;";
+        match parse_query(query) {
+            Ok(request) => {
+                let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                let sql = request.to_sql(d, "4326", None);
+                assert_eq!("SET statement_timeout = 160000;
+WITH
+_a AS (
+    SELECT
+        *
+    FROM
+        node_by_id
+    WHERE
+        osm_type = 'n' AND
+        id = ANY (ARRAY[1])
+),
+_b AS (
+    SELECT
+        way.*
+    FROM
+        _a AS way
+        JOIN node ON
+            node.id = ANY(way.nodes) AND
+            node.geom && way.geom
+    WHERE
+        way.osm_type = 'w'
+    UNION ALL
+    SELECT
+        node.*
+    FROM
+        _a AS relation
+        JOIN LATERAL (
+            SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
+        ) AS members ON
+            type = 'w'
+        JOIN node ON
+            node.id = members.ref
+    WHERE
+        relation.osm_type = 'r'
+    UNION ALL
+    SELECT
+        way.*
+    FROM
+        _a AS relation
+        JOIN LATERAL (
+            SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'w'
+        ) AS members ON
+            true
+        JOIN way ON
+            way.id = members.ref
+    WHERE
+        relation.osm_type = 'r'
+)
+
+;", sql);
             }
             Err(e) => {
                 println!("Error parsing query: {e}");

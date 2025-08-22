@@ -14,6 +14,7 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct QueryRecurse {
+    pub set: Option<Box<str>>,
     pub recurse: Box<str>,
     #[derivative(Default(
         value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
@@ -41,6 +42,9 @@ impl Query for QueryRecurse {
         let mut query_recurse = QueryRecurse::default();
         for inner_pair in pair.into_inner() {
             match inner_pair.as_rule() {
+                Rule::ID => {
+                    query_recurse.set = Some(inner_pair.as_str().into());
+                }
                 Rule::query_recurse => {
                     query_recurse.recurse = inner_pair.as_str().into();
                 }
@@ -76,10 +80,16 @@ impl Query for QueryRecurse {
         _srid: &str,
         default_set: &str,
     ) -> String {
+        let from = if self.set.is_none() {
+            default_set
+        } else {
+            self.set.as_ref().unwrap()
+        };
+
         format!("SELECT
     way.*
 FROM
-    _{default_set} AS way
+    _{from} AS way
     JOIN node ON
         node.id = ANY(way.nodes) AND
         node.geom && way.geom
@@ -89,7 +99,7 @@ UNION ALL
 SELECT
     node.*
 FROM
-    _{default_set} AS relation
+    _{from} AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
     ) AS members ON
@@ -102,7 +112,7 @@ UNION ALL
 SELECT
     way.*
 FROM
-    _{default_set} AS relation
+    _{from} AS relation
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'w'
     ) AS members ON
