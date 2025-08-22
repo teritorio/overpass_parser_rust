@@ -45,15 +45,13 @@ pub mod duckdb {
         }
 
         fn st_intersects_with_geom(&self, geom: &str) -> String {
-            vec![
-                self.st_intersects_extent_with_geom(geom),
+            [self.st_intersects_extent_with_geom(geom),
                 format!(
                     "ST_Intersects(
         {geom},
         geom
     )"
-                ),
-            ]
+                )]
             .join(" AND\n")
         }
 
