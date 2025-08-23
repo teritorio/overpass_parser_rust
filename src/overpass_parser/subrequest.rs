@@ -22,23 +22,17 @@ pub enum QueryType {
     QueryRecurse(QueryRecurse),
 }
 
+impl QueryType {
+    pub fn asignation(&self) -> Option<Box<str>> {
+        match self {
+            QueryType::QueryObjects(query) => query.asignation.clone(),
+            QueryType::QueryUnion(query) => query.asignation.clone(),
+            QueryType::QueryRecurse(query) => query.asignation.clone(),
+        }
+    }
+}
+
 impl Query for QueryType {
-    fn default_asignation(&self) -> Option<&str> {
-        match self {
-            QueryType::QueryObjects(query) => query.default_asignation(),
-            QueryType::QueryUnion(query) => query.default_asignation(),
-            QueryType::QueryRecurse(query) => query.default_asignation(),
-        }
-    }
-
-    fn asignation(&self) -> &str {
-        match self {
-            QueryType::QueryObjects(query) => query.asignation(),
-            QueryType::QueryUnion(query) => query.asignation(),
-            QueryType::QueryRecurse(query) => query.asignation(),
-        }
-    }
-
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
         match pair.as_rule() {
             Rule::query_object => {
@@ -82,15 +76,6 @@ pub enum SubrequestType {
     Out(Out),
 }
 
-impl SubrequestType {
-    pub fn asignation(&self) -> &str {
-        match self {
-            SubrequestType::QueryType(query_type) => query_type.asignation(),
-            SubrequestType::Out(out) => out.asignation(),
-        }
-    }
-}
-
 #[derive(Derivative)]
 #[derivative(Default)]
 #[derive(Debug, Clone)]
@@ -104,26 +89,20 @@ pub struct Subrequest {
 
 impl Subrequest {
     pub fn from_pest(pair: Pair<Rule>) -> Result<Self, pest::error::Error<Rule>> {
-        let mut previous_default_set = "_".to_string();
         let mut subrequest = Subrequest::default();
         for inner in pair.into_inner() {
             match inner.as_rule() {
                 Rule::query_sequence => {
                     for query in inner.into_inner() {
                         match QueryType::from_pest(query) {
-                            Ok(query_type) => {
-                                if let Some(default_asignation) = query_type.default_asignation() {
-                                    previous_default_set = default_asignation.into();
-                                }
-                                subrequest
-                                    .queries
-                                    .push(Box::new(SubrequestType::QueryType(*query_type)))
-                            }
+                            Ok(query_type) => subrequest
+                                .queries
+                                .push(Box::new(SubrequestType::QueryType(*query_type))),
                             Err(e) => return Err(e),
                         }
                     }
                 }
-                Rule::out => match Out::from_pest(inner, previous_default_set.as_str()) {
+                Rule::out => match Out::from_pest(inner) {
                     Ok(out) => subrequest.queries.push(Box::new(SubrequestType::Out(out))),
                     Err(e) => return Err(e),
                 },
@@ -141,39 +120,45 @@ impl Subrequest {
     }
 
     pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
-        let mut previous_default_set = "_";
-        let mut outs: Vec<&str> = Vec::new();
+        let mut previous_default_set: String = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
-        let with = self
+        let clauses = self
             .queries
             .iter()
-            .map(|query| {
-                let mut sql = match query.as_ref() {
-                    SubrequestType::QueryType(query_type) => {
-                        let q = query_type.to_sql(sql_dialect, srid, previous_default_set);
-                        if let Some(default_asignation) = query_type.default_asignation() {
-                            previous_default_set = default_asignation;
+            .map(|query| match query.as_ref() {
+                SubrequestType::QueryType(query_type) => {
+                    let sql = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                    let set: String = match query_type.asignation() {
+                        Some(asignation) => asignation.to_string(),
+                        None => {
+                            previous_default_set =
+                                COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
+                            previous_default_set.clone()
                         }
-                        q
-                    }
-                    SubrequestType::Out(out) => {
-                        outs.push(&*out.set);
-                        out.to_sql(sql_dialect, srid)
-                    }
-                };
-                sql = replace.replace_all(&sql, "    ").to_string();
-                let set = query.as_ref().asignation();
-                format!("_{set} AS (\n{sql}\n)")
+                    };
+                    (false, set, sql)
+                }
+                SubrequestType::Out(out) => (
+                    true,
+                    format!(
+                        "out_{}",
+                        out.set
+                            .clone()
+                            .unwrap_or(previous_default_set.as_str().into())
+                    ),
+                    out.to_sql(sql_dialect, srid, previous_default_set.as_str()),
+                ),
             })
-            .collect::<Vec<String>>();
-        let with_join = with.join(",\n");
-        let select = self
-            .queries
+            .collect::<Vec<(bool, String, String)>>();
+        let with_join = clauses
             .iter()
-            .filter_map(|query| match query.as_ref() {
-                SubrequestType::Out(out) => Some(format!("SELECT * FROM _{}", out.asignation())),
-                _ => None,
-            })
+            .map(|(_, set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
+            .collect::<Vec<String>>()
+            .join(",\n");
+        let select = clauses
+            .iter()
+            .filter(|(is_out, _, _)| *is_out)
+            .map(|(_, set, _sql)| format!("SELECT * FROM _{set}"))
             .collect::<Vec<String>>()
             .join("\nUNION ALL\n");
 

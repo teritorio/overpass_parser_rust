@@ -15,28 +15,10 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Clone)]
 pub struct QueryUnion {
     pub queries: Vec<Box<QueryType>>,
-    #[derivative(Default(
-        value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
-    ))]
-    pub default_asignation: Box<str>,
     pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryUnion {
-    fn default_asignation(&self) -> Option<&str> {
-        match self.asignation {
-            None => Some(&self.default_asignation),
-            _ => None,
-        }
-    }
-
-    fn asignation(&self) -> &str {
-        self.asignation
-            .as_ref()
-            .map(|s| s.as_ref())
-            .unwrap_or(&self.default_asignation)
-    }
-
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
         let mut query_union = QueryUnion::default();
         for inner_pair in pair.into_inner() {
@@ -71,25 +53,39 @@ impl Query for QueryUnion {
         srid: &str,
         default_set: &str,
     ) -> String {
-        let mut default_set = default_set;
+        let mut previous_default_set = default_set.to_string();
         let replace = Regex::new(r"^").unwrap();
 
-        let with = self
+        let clauses = self
             .queries
             .iter()
             .map(|query| {
-                let mut sql = query.to_sql(sql_dialect, srid, default_set);
-                sql = replace.replace_all(&sql, "").to_string();
-                default_set = query.asignation();
-                format!("_{default_set} AS (\n{sql}\n)")
+                let sql = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                let set = match query.asignation() {
+                    Some(asignation) => asignation.to_string(),
+                    None => {
+                        previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
+                        previous_default_set.clone()
+                    }
+                };
+                (set, sql)
+            })
+            .collect::<Vec<(String, String)>>();
+
+        let with = clauses
+            .iter()
+            .map(|(set, sql)| {
+                format!(
+                    "_{set} AS (\n{}\n)",
+                    replace.replace_all(sql, "")
+                )
             })
             .collect::<Vec<String>>()
             .join(",\n");
 
-        let asignations = self
-            .queries
+        let asignations = clauses
             .iter()
-            .map(|query| format!("(SELECT * FROM _{})", query.asignation()))
+            .map(|(set, _sql)| format!("(SELECT * FROM _{set})"))
             .collect::<Vec<String>>()
             .join(" UNION\n    ");
 

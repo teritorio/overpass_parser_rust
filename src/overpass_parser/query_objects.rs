@@ -8,7 +8,7 @@ use derivative::Derivative;
 
 use super::{Rule, query::Query, selectors::Selectors};
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -20,28 +20,10 @@ pub struct QueryObjects {
     pub selectors: Selectors,
     pub filters: Option<Filters>,
     pub set: Option<Box<str>>,
-    #[derivative(Default(
-        value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
-    ))]
-    pub default_asignation: Box<str>,
     pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryObjects {
-    fn default_asignation(&self) -> Option<&str> {
-        match self.asignation {
-            None => Some(&self.default_asignation),
-            _ => None,
-        }
-    }
-
-    fn asignation(&self) -> &str {
-        self.asignation
-            .as_ref()
-            .map(|s| s.as_ref())
-            .unwrap_or(&self.default_asignation)
-    }
-
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
         match pair.as_rule() {
             Rule::query_object => {

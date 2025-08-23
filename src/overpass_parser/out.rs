@@ -10,34 +10,22 @@ use super::Rule;
 #[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct Out {
-    pub set: Box<str>,
+    pub set: Option<Box<str>>,
 
     #[derivative(Default(value = "\"geom\".into()"))]
     pub geom: Box<str>,
 
     #[derivative(Default(value = "\"body\".into()"))]
     pub level_of_details: Box<str>,
-
-    pub assignation: Box<str>,
 }
 
 impl Out {
-    pub fn asignation(&self) -> &str {
-        &self.assignation
-    }
-
-    pub fn from_pest(
-        pair: Pair<Rule>,
-        default_set: &str,
-    ) -> Result<Self, pest::error::Error<Rule>> {
-        let mut out = Out {
-            set: default_set.into(),
-            ..Default::default()
-        };
+    pub fn from_pest(pair: Pair<Rule>) -> Result<Self, pest::error::Error<Rule>> {
+        let mut out = Out::default();
         for inner_pair in pair.into_inner() {
             match inner_pair.as_rule() {
                 Rule::ID => {
-                    out.set = inner_pair.as_str().into();
+                    out.set = Some(inner_pair.as_str().into());
                 }
                 Rule::out_geom => {
                     out.geom = inner_pair.as_str().into();
@@ -55,11 +43,15 @@ impl Out {
                 }
             }
         }
-        out.assignation = format!("out_{}", out.set).as_str().into();
         Ok(out)
     }
 
-    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
+    pub fn to_sql(
+        &self,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
+        srid: &str,
+        default_set: &str,
+    ) -> String {
         let way_member_nodes = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let relations_members = matches!(self.level_of_details.as_ref(), "skel" | "body" | "meta");
         let tags = matches!(self.level_of_details.as_ref(), "body" | "tags" | "meta");
@@ -170,7 +162,7 @@ FROM {st_dump_points}(geom))",
     'lon', CASE osm_type WHEN 'n' THEN ST_X({st_transform_reverse})::numeric END,
     'lat', CASE osm_type WHEN 'n' THEN ST_Y({st_transform_reverse})::numeric END{meta_fields}{geom_center}{geom_bb_geom}{geom}{way_member_nodes_field}{relations_members_field}{tags_field})) AS j
 FROM
-    _{}", self.set)
+    _{}", self.set.clone().unwrap_or(default_set.into()))
     }
 }
 

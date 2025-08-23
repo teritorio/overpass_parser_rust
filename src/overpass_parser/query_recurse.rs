@@ -6,7 +6,7 @@ use crate::sql_dialect::sql_dialect::SqlDialect;
 
 use super::{Rule, query::Query};
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -16,28 +16,10 @@ static COUNTER: AtomicU64 = AtomicU64::new(0);
 pub struct QueryRecurse {
     pub set: Option<Box<str>>,
     pub recurse: Box<str>,
-    #[derivative(Default(
-        value = "COUNTER.fetch_add(1, Ordering::SeqCst).to_string().as_str().into()"
-    ))]
-    pub default_asignation: Box<str>,
     pub asignation: Option<Box<str>>,
 }
 
 impl Query for QueryRecurse {
-    fn default_asignation(&self) -> Option<&str> {
-        match self.asignation {
-            None => Some(&self.default_asignation),
-            _ => None,
-        }
-    }
-
-    fn asignation(&self) -> &str {
-        self.asignation
-            .as_ref()
-            .map(|s| s.as_ref())
-            .unwrap_or(&self.default_asignation)
-    }
-
     fn from_pest(pair: Pair<Rule>) -> Result<Box<Self>, pest::error::Error<Rule>> {
         let mut query_recurse = QueryRecurse::default();
         for inner_pair in pair.into_inner() {
