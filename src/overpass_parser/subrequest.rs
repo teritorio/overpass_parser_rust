@@ -220,9 +220,8 @@ _b AS (
         way.*
     FROM
         _a AS way
-        JOIN node ON
-            node.id = ANY(way.nodes) AND
-            node.geom && way.geom
+        JOIN node_by_id AS node ON
+            node.id = ANY(way.nodes)
     WHERE
         way.osm_type = 'w'
     UNION ALL
@@ -234,7 +233,7 @@ _b AS (
             SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
         ) AS members ON
             type = 'w'
-        JOIN node ON
+        JOIN node_by_id AS node ON
             node.id = members.ref
     WHERE
         relation.osm_type = 'r'
@@ -247,7 +246,7 @@ _b AS (
             SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'w'
         ) AS members ON
             true
-        JOIN way ON
+        JOIN way_by_id AS way ON
             way.id = members.ref
     WHERE
         relation.osm_type = 'r'
