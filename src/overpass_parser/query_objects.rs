@@ -8,10 +8,6 @@ use derivative::Derivative;
 
 use super::{Rule, query::Query, selectors::Selectors};
 
-use std::sync::atomic::AtomicU64;
-
-static COUNTER: AtomicU64 = AtomicU64::new(0);
-
 #[derive(Derivative)]
 #[derivative(Default)]
 #[derive(Debug, Clone)]
