@@ -206,13 +206,7 @@ impl Filter {
             clauses.push(Self::poly_clauses(sql_dialect, poly, srid));
         }
         if let Some(ids) = &self.ids {
-            clauses.push(format!(
-                "id = ANY (ARRAY[{}])",
-                ids.iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            ));
+            clauses.push(sql_dialect.id_in_list("id", ids))
         }
         if let Some(area_id) = &self.area_id {
             clauses.push(

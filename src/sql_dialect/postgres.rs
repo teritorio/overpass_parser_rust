@@ -23,6 +23,17 @@ pub mod postgres {
             format!("SET statement_timeout = {timeout};")
         }
 
+        fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
+            format!(
+                "{field} = ANY (ARRAY[{}])",
+                values
+                    .iter()
+                    .map(|value| value.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )
+        }
+
         fn hash_exists(&self, key: &str) -> String {
             format!("tags?{}", self.escape_literal(key))
         }

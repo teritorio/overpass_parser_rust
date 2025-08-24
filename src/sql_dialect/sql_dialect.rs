@@ -5,6 +5,8 @@ pub trait SqlDialect: Send + Sync {
 
     fn statement_timeout(&self, timeout: u32) -> String;
 
+    fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String;
+
     fn hash_exists(&self, key: &str) -> String;
 
     fn hash_get(&self, key: &str) -> String;

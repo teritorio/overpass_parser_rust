@@ -16,6 +16,15 @@ pub mod duckdb {
             "".to_string()
         }
 
+        fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
+            let sql = values
+                .iter()
+                .map(|value| format!("{field} = {}", value.to_string()))
+                .collect::<Vec<String>>()
+                .join(" OR ");
+            format!("({})", sql)
+        }
+
         fn hash_exists(&self, key: &str) -> String {
             format!("(tags->>{}) IS NOT NULL", self.escape_literal(key))
         }
@@ -45,13 +54,15 @@ pub mod duckdb {
         }
 
         fn st_intersects_with_geom(&self, geom: &str) -> String {
-            [self.st_intersects_extent_with_geom(geom),
+            [
+                self.st_intersects_extent_with_geom(geom),
                 format!(
                     "ST_Intersects(
         {geom},
         geom
     )"
-                )]
+                ),
+            ]
             .join(" AND\n")
         }
 
