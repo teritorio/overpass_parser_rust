@@ -62,20 +62,20 @@ pub mod postgres {
             Some("ST_DumpPoints".to_string())
         }
 
-        fn st_intersects_with_geom(&self, geom: &str) -> String {
+        fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String {
             format!(
                 "ST_Intersects(
     {geom},
-    geom
+    {table}.geom
 )"
             )
         }
 
-        fn st_intersects_extent_with_geom(&self, geom: &str) -> String {
+        fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String {
             format!(
                 "ST_Intersects(
     {geom},
-    geom
+    {table}.geom
 )"
             )
         }

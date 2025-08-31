@@ -53,25 +53,25 @@ pub mod duckdb {
             None
         }
 
-        fn st_intersects_with_geom(&self, geom: &str) -> String {
+        fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String {
             [
-                self.st_intersects_extent_with_geom(geom),
+                self.st_intersects_extent_with_geom(table, geom),
                 format!(
                     "ST_Intersects(
         {geom},
-        geom
+        {table}.geom
     )"
                 ),
             ]
             .join(" AND\n")
         }
 
-        fn st_intersects_extent_with_geom(&self, geom: &str) -> String {
+        fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String {
             format!(
-                "bbox.xmin <= ST_XMax({geom}) AND
-bbox.xmax >= ST_XMin({geom}) AND
-bbox.ymin <= ST_YMax({geom}) AND
-bbox.ymax >= ST_YMin({geom})"
+                "{table}.bbox.xmin <= ST_XMax({geom}) AND
+{table}.bbox.xmax >= ST_XMin({geom}) AND
+{table}.bbox.ymin <= ST_YMax({geom}) AND
+{table}.bbox.ymax >= ST_YMin({geom})"
             )
         }
 

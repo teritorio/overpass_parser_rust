@@ -21,9 +21,9 @@ pub trait SqlDialect: Send + Sync {
 
     fn st_dump_points(&self) -> Option<String>;
 
-    fn st_intersects_with_geom(&self, geom: &str) -> String;
+    fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String;
 
-    fn st_intersects_extent_with_geom(&self, geom: &str) -> String;
+    fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String;
 
     fn st_transform(&self, geom: &str, srid: &str) -> String;
 
