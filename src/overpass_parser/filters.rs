@@ -181,24 +181,27 @@ impl Filter {
                 ) + 180) / 6)
             "
         );
-        sql_dialect.st_intersects_with_geom(set, &sql_dialect.st_transform(
-            &format!(
-                "
+        sql_dialect.st_intersects_with_geom(
+            set,
+            &sql_dialect.st_transform(
+                &format!(
+                    "
         ST_Buffer(
             {},
             {}
         )",
-                sql_dialect.st_transform(
-                    &format!(
-                        "
+                    sql_dialect.st_transform(
+                        &format!(
+                            "
                 {core_geom}"
+                        ),
+                        &utm_zone
                     ),
-                    &utm_zone
+                    around.radius
                 ),
-                around.radius
+                srid,
             ),
-            srid,
-        ))
+        )
     }
 
     pub fn to_sql(
