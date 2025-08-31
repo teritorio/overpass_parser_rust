@@ -158,7 +158,6 @@ impl Filter {
     }
 
     fn around_clause(
-        &self,
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
@@ -204,6 +203,22 @@ impl Filter {
         )
     }
 
+    fn area_id_clause(
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
+        set: &str,
+        area_id: &str,
+    ) -> String {
+        sql_dialect.st_intersects_with_geom(
+            set,
+            format!(
+                "(SELECT {}(geom) FROM _{})",
+                sql_dialect.st_union(),
+                area_id
+            )
+            .as_str(),
+        )
+    }
+
     pub fn to_sql(
         &self,
         sql_dialect: &(dyn SqlDialect + Send + Sync),
@@ -222,20 +237,10 @@ impl Filter {
             clauses.push(sql_dialect.id_in_list("id", ids))
         }
         if let Some(area_id) = &self.area_id {
-            clauses.push(
-                sql_dialect.st_intersects_with_geom(
-                    set,
-                    format!(
-                        "(SELECT {}(geom) FROM _{})",
-                        sql_dialect.st_union(),
-                        area_id
-                    )
-                    .as_str(),
-                ),
-            );
+            clauses.push(Self::area_id_clause(sql_dialect, set, area_id));
         }
         if let Some(around) = &self.around {
-            clauses.push(self.around_clause(sql_dialect, set, srid, around));
+            clauses.push(Self::around_clause(sql_dialect, set, srid, around));
         }
 
         clauses
