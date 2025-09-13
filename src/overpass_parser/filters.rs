@@ -207,15 +207,13 @@ impl Filter {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         area_id: &str,
-    ) -> String {
-        sql_dialect.st_intersects_with_geom(
-            set,
-            format!(
-                "(SELECT {}(geom) FROM _{})",
-                sql_dialect.st_union(),
-                area_id
-            )
-            .as_str(),
+    ) -> (Option<String>, String) {
+        (
+            Some(format!(
+                "JOIN (SELECT {}(geom) AS geom FROM _{area_id}) AS _{area_id}_geom ON true",
+                sql_dialect.st_union()
+            )),
+            sql_dialect.st_intersects_with_geom(set, format!("_{area_id}_geom.geom").as_str()),
         )
     }
 
@@ -224,30 +222,36 @@ impl Filter {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> String {
+    ) -> (String, String) {
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
-            clauses.push(Self::bbox_clauses(sql_dialect, set, bbox, srid));
+            clauses.push((None, Self::bbox_clauses(sql_dialect, set, bbox, srid)));
         }
         if let Some(poly) = &self.poly {
-            clauses.push(Self::poly_clauses(sql_dialect, set, poly, srid));
+            clauses.push((None, Self::poly_clauses(sql_dialect, set, poly, srid)));
         }
         if let Some(ids) = &self.ids {
-            clauses.push(sql_dialect.id_in_list("id", ids))
+            clauses.push((None, sql_dialect.id_in_list("id", ids)))
         }
         if let Some(area_id) = &self.area_id {
             clauses.push(Self::area_id_clause(sql_dialect, set, area_id));
         }
         if let Some(around) = &self.around {
-            clauses.push(Self::around_clause(sql_dialect, set, srid, around));
+            clauses.push((None, Self::around_clause(sql_dialect, set, srid, around)));
         }
 
-        clauses
-            .into_iter()
-            .map(|c| c.replace("\n", "\n    "))
+        let from = clauses
+            .iter()
+            .filter_map(|c| c.0.clone())
             .collect::<Vec<String>>()
-            .join(" AND ")
+            .join("\n");
+        let clauses = clauses
+            .into_iter()
+            .map(|c| c.1.replace("\n", "\n    "))
+            .collect::<Vec<String>>()
+            .join(" AND ");
+        (from, clauses)
     }
 }
 
@@ -274,12 +278,23 @@ impl Filters {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> String {
-        self.filters
+    ) -> (String, String) {
+        let s = self
+            .filters
             .iter()
             .map(|filter| filter.to_sql(sql_dialect, set, srid))
+            .collect::<Vec<(String, String)>>();
+        let from = s
+            .iter()
+            .map(|(from, _)| from.clone())
             .collect::<Vec<String>>()
-            .join(" AND ")
+            .join(" AND ");
+        let clauses = s
+            .iter()
+            .map(|(_, clauses)| clauses.clone())
+            .collect::<Vec<String>>()
+            .join(" AND ");
+        (from, clauses)
     }
 }
 
@@ -330,22 +345,22 @@ mod tests {
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326),
         _.geom
     )",
-            parse("(-1.1,2,3,4)").to_sql(d, "_", "4326")
+            parse("(-1.1,2,3,4)").to_sql(d, "_", "4326").1
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(d, "_", "4326")
+            parse("(11111111111111)").to_sql(d, "_", "4326").1
         );
         assert_eq!(
             "id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(d, "_", "4326")
+            parse("(id:1,2,3)").to_sql(d, "_", "4326").1
         );
         assert_eq!(
             "ST_Intersects(
-        (SELECT ST_Union(geom) FROM _a),
+        _a_geom.geom,
         _.geom
     )",
-            parse("(area.a)").to_sql(d, "_", "4326")
+            parse("(area.a)").to_sql(d, "_", "4326").1
         );
         assert_eq!(
             "ST_Intersects(
@@ -366,7 +381,7 @@ mod tests {
             ), 4326),
         _.geom
     )",
-            parse("(around.a:12.3)").to_sql(d, "_", "4326")
+            parse("(around.a:12.3)").to_sql(d, "_", "4326").1
         );
     }
 }

@@ -64,10 +64,11 @@ _k AS (
         *
     FROM
         nwr_by_geom
+        JOIN (SELECT ST_Union(geom) AS geom FROM _a) AS _a_geom ON true
     WHERE
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
         ST_Intersects(
-            (SELECT ST_Union(geom) FROM _a),
+            _a_geom.geom,
             nwr_by_geom.geom
         )
     ),
@@ -76,10 +77,11 @@ _k AS (
         *
     FROM
         nwr_by_geom
+        JOIN (SELECT ST_Union(geom) AS geom FROM _a) AS _a_geom ON true
     WHERE
         tags?'c' AND
         ST_Intersects(
-            (SELECT ST_Union(geom) FROM _a),
+            _a_geom.geom,
             nwr_by_geom.geom
         )
     )

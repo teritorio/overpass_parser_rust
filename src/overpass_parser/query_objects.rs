@@ -82,7 +82,7 @@ impl Query for QueryObjects {
         default_set: &str,
     ) -> String {
         let p: String;
-        let from: String = if self.set.is_none() {
+        let mut from: String = if self.set.is_none() {
             let from: String = self.object_type.clone().into();
             if self.filters.is_some() && self.filters.as_ref().unwrap().has_ids() {
                 format!("{from}_by_id")
@@ -118,7 +118,11 @@ impl Query for QueryObjects {
         }
 
         if let Some(filters) = &self.filters {
-            where_clauses.push(filters.to_sql(sql_dialect, &from, srid));
+            let (w, c) = filters.to_sql(sql_dialect, &from, srid);
+            if !w.is_empty() {
+                from = format!("{from}\n    {w}");
+            }
+            where_clauses.push(c);
         }
 
         let where_clause = format!("WHERE\n    {}", where_clauses.join(" AND\n    "));
