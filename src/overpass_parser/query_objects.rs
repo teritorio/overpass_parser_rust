@@ -118,11 +118,11 @@ impl Query for QueryObjects {
         }
 
         if let Some(filters) = &self.filters {
-            let (w, c) = filters.to_sql(sql_dialect, &from, srid);
-            if !w.is_empty() {
-                from = format!("{from}\n    {w}");
+            let sj = filters.to_sql(sql_dialect, &from, srid);
+            if let Some(sj_from) = sj.from {
+                from = format!("{}\n    {}", from, sj_from);
             }
-            where_clauses.push(c);
+            where_clauses.push(sj.clauses);
         }
 
         let where_clause = format!("WHERE\n    {}", where_clauses.join(" AND\n    "));

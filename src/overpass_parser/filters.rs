@@ -5,7 +5,7 @@ use regex::Regex;
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
-use super::Rule;
+use super::{Rule, subrequest::SubrequestJoin};
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -222,7 +222,7 @@ impl Filter {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> (String, String) {
+    ) -> SubrequestJoin {
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
@@ -251,7 +251,10 @@ impl Filter {
             .map(|c| c.1.replace("\n", "\n    "))
             .collect::<Vec<String>>()
             .join(" AND ");
-        (from, clauses)
+        SubrequestJoin {
+            from: Some(from),
+            clauses: clauses,
+        }
     }
 }
 
@@ -278,23 +281,27 @@ impl Filters {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> (String, String) {
+    ) -> SubrequestJoin {
         let s = self
             .filters
             .iter()
             .map(|filter| filter.to_sql(sql_dialect, set, srid))
-            .collect::<Vec<(String, String)>>();
+            .collect::<Vec<SubrequestJoin>>();
         let from = s
             .iter()
-            .map(|(from, _)| from.clone())
+            .map(|sj| sj.from.clone())
+            .filter_map(|f| f)
             .collect::<Vec<String>>()
             .join(" AND ");
         let clauses = s
             .iter()
-            .map(|(_, clauses)| clauses.clone())
+            .map(|sj| sj.clauses.clone())
             .collect::<Vec<String>>()
             .join(" AND ");
-        (from, clauses)
+        SubrequestJoin {
+            from: (!from.is_empty()).then(|| from),
+            clauses: clauses,
+        }
     }
 }
 
@@ -345,22 +352,22 @@ mod tests {
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326),
         _.geom
     )",
-            parse("(-1.1,2,3,4)").to_sql(d, "_", "4326").1
+            parse("(-1.1,2,3,4)").to_sql(d, "_", "4326").clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(d, "_", "4326").1
+            parse("(11111111111111)").to_sql(d, "_", "4326").clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(d, "_", "4326").1
+            parse("(id:1,2,3)").to_sql(d, "_", "4326").clauses
         );
         assert_eq!(
             "ST_Intersects(
         _a_geom.geom,
         _.geom
     )",
-            parse("(area.a)").to_sql(d, "_", "4326").1
+            parse("(area.a)").to_sql(d, "_", "4326").clauses
         );
         assert_eq!(
             "ST_Intersects(
@@ -381,7 +388,7 @@ mod tests {
             ), 4326),
         _.geom
     )",
-            parse("(around.a:12.3)").to_sql(d, "_", "4326").1
+            parse("(around.a:12.3)").to_sql(d, "_", "4326").clauses
         );
     }
 }

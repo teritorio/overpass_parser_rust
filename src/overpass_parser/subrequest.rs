@@ -76,6 +76,12 @@ pub enum SubrequestType {
     Out(Out),
 }
 
+#[derive(Debug, Clone)]
+pub struct SubrequestJoin {
+    pub from: Option<String>,
+    pub clauses: String,
+}
+
 #[derive(Derivative)]
 #[derivative(Default)]
 #[derive(Debug, Clone)]
