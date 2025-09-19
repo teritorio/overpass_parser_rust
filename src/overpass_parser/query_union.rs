@@ -4,7 +4,11 @@ use pest::iterators::Pair;
 use derivative::Derivative;
 use regex::Regex;
 
-use super::{Rule, query::Query, subrequest::QueryType};
+use super::{
+    Rule,
+    query::Query,
+    subrequest::{QueryType, SubrequestJoin},
+};
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -52,7 +56,8 @@ impl Query for QueryUnion {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> String {
+    ) -> SubrequestJoin {
+        let mut precomputed = Vec::new();
         let mut previous_default_set = default_set.to_string();
         let replace = Regex::new(r"^").unwrap();
 
@@ -60,7 +65,8 @@ impl Query for QueryUnion {
             .queries
             .iter()
             .map(|query| {
-                let sql = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                let sj = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                precomputed.extend(sj.precompute.unwrap_or_default());
                 let set = match query.asignation() {
                     Some(asignation) => asignation.to_string(),
                     None => {
@@ -68,18 +74,13 @@ impl Query for QueryUnion {
                         previous_default_set.clone()
                     }
                 };
-                (set, sql)
+                (set, sj.clauses)
             })
             .collect::<Vec<(String, String)>>();
 
         let with = clauses
             .iter()
-            .map(|(set, sql)| {
-                format!(
-                    "_{set} AS (\n{}\n)",
-                    replace.replace_all(sql, "")
-                )
-            })
+            .map(|(set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "")))
             .collect::<Vec<String>>()
             .join(",\n");
 
@@ -89,8 +90,11 @@ impl Query for QueryUnion {
             .collect::<Vec<String>>()
             .join(" UNION\n    ");
 
-        format!(
-            "WITH
+        SubrequestJoin {
+            precompute: Some(precomputed),
+            from: None,
+            clauses: format!(
+                "WITH
 {with}
 SELECT DISTINCT ON(osm_type, id)
     *
@@ -99,7 +103,8 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id"
-        )
+            ),
+        }
     }
 }
 
@@ -161,7 +166,7 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id",
-            parse("(node->.a;way->.b;);").to_sql(d, "4326", "_")
+            parse("(node->.a;way->.b;);").to_sql(d, "4326", "_").clauses
         )
     }
 }

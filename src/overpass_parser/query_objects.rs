@@ -6,7 +6,7 @@ use pest::iterators::Pair;
 
 use derivative::Derivative;
 
-use super::{Rule, query::Query, selectors::Selectors};
+use super::{Rule, query::Query, selectors::Selectors, subrequest::SubrequestJoin};
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -80,7 +80,7 @@ impl Query for QueryObjects {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> String {
+    ) -> SubrequestJoin {
         let p: String;
         let mut from: String = if self.set.is_none() {
             let from: String = self.object_type.clone().into();
@@ -117,23 +117,29 @@ impl Query for QueryObjects {
             where_clauses.push(selectors_sql);
         }
 
+        let mut precomputed = Vec::new();
         if let Some(filters) = &self.filters {
             let sj = filters.to_sql(sql_dialect, &from, srid);
+            precomputed = sj.precompute.unwrap_or_default();
             if let Some(sj_from) = sj.from {
-                from = format!("{}\n    {}", from, sj_from);
+                from = format!("{from}\n    {sj_from}");
             }
             where_clauses.push(sj.clauses);
         }
 
         let where_clause = format!("WHERE\n    {}", where_clauses.join(" AND\n    "));
 
-        format!(
-            "SELECT
+        SubrequestJoin {
+            precompute: Some(precomputed),
+            from: None,
+            clauses: format!(
+                "SELECT
     *
 FROM
     {from}
 {where_clause}"
-        )
+            ),
+        }
     }
 }
 
@@ -185,7 +191,7 @@ WHERE
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 4326),
         _a.geom
     )",
-            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "4326", "_")
+            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "4326", "_").clauses
         );
     }
 
@@ -204,7 +210,7 @@ WHERE
         ST_Transform('SRID=4326;POLYGON(2 1, 4 3, 6 5)'::geometry, 4326),
         _a.geom
     )",
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "4326", "_")
+            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "4326", "_").clauses
         );
     }
 }

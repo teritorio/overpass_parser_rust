@@ -23,6 +23,14 @@ pub mod postgres {
             format!("SET statement_timeout = {timeout};")
         }
 
+        fn is_precompute(&self) -> bool {
+            false
+        }
+
+        fn precompute(&self, _set: &str, _sql: &str) -> Option<String> {
+            None
+        }
+
         fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
             format!(
                 "{field} = ANY (ARRAY[{}])",
@@ -62,19 +70,23 @@ pub mod postgres {
             Some("ST_DumpPoints".to_string())
         }
 
-        fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String {
+        fn table_precompute_geom(&self, other: &str) -> String {
+            format!("_{other}.geom")
+        }
+
+        fn st_intersects_with_geom(&self, table: &str, other: &str) -> String {
             format!(
                 "ST_Intersects(
-    {geom},
+    {other},
     {table}.geom
 )"
             )
         }
 
-        fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String {
+        fn st_intersects_extent_with_geom(&self, table: &str, other: &str) -> String {
             format!(
                 "ST_Intersects(
-    {geom},
+    {other},
     {table}.geom
 )"
             )

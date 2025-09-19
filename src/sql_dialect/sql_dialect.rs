@@ -5,6 +5,10 @@ pub trait SqlDialect: Send + Sync {
 
     fn statement_timeout(&self, timeout: u32) -> String;
 
+    fn is_precompute(&self) -> bool;
+
+    fn precompute(&self, set: &str, sql: &str) -> Option<String>;
+
     fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String;
 
     fn hash_exists(&self, key: &str) -> String;
@@ -21,9 +25,11 @@ pub trait SqlDialect: Send + Sync {
 
     fn st_dump_points(&self) -> Option<String>;
 
-    fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String;
+    fn table_precompute_geom(&self, other: &str) -> String;
 
-    fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String;
+    fn st_intersects_with_geom(&self, table: &str, other: &str) -> String;
+
+    fn st_intersects_extent_with_geom(&self, table: &str, other: &str) -> String;
 
     fn st_transform(&self, geom: &str, srid: &str) -> String;
 

@@ -61,7 +61,7 @@ impl Query for QueryType {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> String {
+    ) -> SubrequestJoin {
         match self {
             QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
@@ -78,6 +78,7 @@ pub enum SubrequestType {
 
 #[derive(Debug, Clone)]
 pub struct SubrequestJoin {
+    pub precompute: Option<Vec<String>>,
     pub from: Option<String>,
     pub clauses: String,
 }
@@ -126,14 +127,16 @@ impl Subrequest {
     }
 
     pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
+        let mut precomputed = Vec::new();
         let mut previous_default_set: String = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
-        let clauses = self
+        let mut clauses = self
             .queries
             .iter()
             .map(|query| match query.as_ref() {
                 SubrequestType::QueryType(query_type) => {
-                    let sql = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                    let sj = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                    precomputed.extend(sj.precompute.unwrap_or_default());
                     let set: String = match query_type.asignation() {
                         Some(asignation) => asignation.to_string(),
                         None => {
@@ -142,7 +145,7 @@ impl Subrequest {
                             previous_default_set.clone()
                         }
                     };
-                    (false, set, sql)
+                    (false, set, sj.clauses)
                 }
                 SubrequestType::Out(out) => (
                     true,
@@ -156,6 +159,26 @@ impl Subrequest {
                 ),
             })
             .collect::<Vec<(bool, String, String)>>();
+        let mut precomputed_sql = Vec::new();
+        clauses = clauses
+            .iter()
+            .filter(|(is_out, set, sql)| {
+                if *is_out || !precomputed.contains(set) {
+                    true
+                } else {
+                    let p = sql_dialect.precompute(set, sql);
+                    if p.is_some() {
+                        precomputed_sql.push(p.unwrap());
+                        false
+                    } else {
+                        true
+                    }
+                }
+            })
+            .map(|(is_out, set, sql)| (*is_out, set.clone(), sql.clone()))
+            .collect::<Vec<(bool, String, String)>>();
+
+        let precomputed_join = precomputed_sql.join("\n");
         let with_join = clauses
             .iter()
             .map(|(_, set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
@@ -168,7 +191,7 @@ impl Subrequest {
             .collect::<Vec<String>>()
             .join("\nUNION ALL\n");
 
-        format!("WITH\n{with_join}\n{select}")
+        format!("{precomputed_join}WITH\n{with_join}\n{select}")
     }
 }
 

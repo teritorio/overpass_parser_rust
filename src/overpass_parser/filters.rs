@@ -207,14 +207,15 @@ impl Filter {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         area_id: &str,
-    ) -> (Option<String>, String) {
-        (
-            Some(format!(
-                "JOIN (SELECT {}(geom) AS geom FROM _{area_id}) AS _{area_id}_geom ON true",
-                sql_dialect.st_union()
-            )),
-            sql_dialect.st_intersects_with_geom(set, format!("_{area_id}_geom.geom").as_str()),
-        )
+    ) -> SubrequestJoin {
+        SubrequestJoin {
+            precompute: sql_dialect
+                .is_precompute()
+                .then(|| vec![area_id.to_string()]),
+            from: (!sql_dialect.is_precompute()).then(|| format!("JOIN _{area_id} ON true")),
+            clauses: sql_dialect
+                .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(area_id).as_str()),
+        }
     }
 
     pub fn to_sql(
@@ -226,34 +227,56 @@ impl Filter {
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
-            clauses.push((None, Self::bbox_clauses(sql_dialect, set, bbox, srid)));
+            clauses.push(SubrequestJoin {
+                precompute: None,
+                from: None,
+                clauses: Self::bbox_clauses(sql_dialect, set, bbox, srid),
+            });
         }
         if let Some(poly) = &self.poly {
-            clauses.push((None, Self::poly_clauses(sql_dialect, set, poly, srid)));
+            clauses.push(SubrequestJoin {
+                precompute: None,
+                from: None,
+                clauses: Self::poly_clauses(sql_dialect, set, poly, srid),
+            });
         }
         if let Some(ids) = &self.ids {
-            clauses.push((None, sql_dialect.id_in_list("id", ids)))
+            clauses.push(SubrequestJoin {
+                precompute: None,
+                from: None,
+                clauses: sql_dialect.id_in_list("id", ids),
+            })
         }
         if let Some(area_id) = &self.area_id {
             clauses.push(Self::area_id_clause(sql_dialect, set, area_id));
         }
         if let Some(around) = &self.around {
-            clauses.push((None, Self::around_clause(sql_dialect, set, srid, around)));
+            clauses.push(SubrequestJoin {
+                precompute: None,
+                from: None,
+                clauses: Self::around_clause(sql_dialect, set, srid, around),
+            });
         }
 
+        let precompute = clauses
+            .iter()
+            .filter_map(|c| c.precompute.clone())
+            .flatten()
+            .collect();
         let from = clauses
             .iter()
-            .filter_map(|c| c.0.clone())
+            .filter_map(|c| c.from.clone())
             .collect::<Vec<String>>()
             .join("\n");
-        let clauses = clauses
+        let clauses_join = clauses
             .into_iter()
-            .map(|c| c.1.replace("\n", "\n    "))
+            .map(|c| c.clauses.replace("\n", "\n    "))
             .collect::<Vec<String>>()
             .join(" AND ");
         SubrequestJoin {
+            precompute: Some(precompute),
             from: Some(from),
-            clauses: clauses,
+            clauses: clauses_join,
         }
     }
 }
@@ -289,8 +312,7 @@ impl Filters {
             .collect::<Vec<SubrequestJoin>>();
         let from = s
             .iter()
-            .map(|sj| sj.from.clone())
-            .filter_map(|f| f)
+            .filter_map(|sj| sj.from.clone())
             .collect::<Vec<String>>()
             .join(" AND ");
         let clauses = s
@@ -299,8 +321,14 @@ impl Filters {
             .collect::<Vec<String>>()
             .join(" AND ");
         SubrequestJoin {
-            from: (!from.is_empty()).then(|| from),
-            clauses: clauses,
+            precompute: Some(
+                s.iter()
+                    .filter_map(|c| c.precompute.clone())
+                    .flatten()
+                    .collect(),
+            ),
+            from: (!from.is_empty()).then_some(from),
+            clauses,
         }
     }
 }
@@ -364,7 +392,7 @@ mod tests {
         );
         assert_eq!(
             "ST_Intersects(
-        _a_geom.geom,
+        _a.geom,
         _.geom
     )",
             parse("(area.a)").to_sql(d, "_", "4326").clauses

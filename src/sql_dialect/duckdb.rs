@@ -16,6 +16,29 @@ pub mod duckdb {
             "".to_string()
         }
 
+        fn is_precompute(&self) -> bool {
+            true
+        }
+
+        fn precompute(&self, set: &str, sql: &str) -> Option<String> {
+            Some(format!("CREATE TEMP TABLE _{set} AS
+{sql}
+;
+SET variable _{set}_bbox = (
+    SELECT
+        STRUCT_PACK(
+            xmin := min(bbox.xmin),
+            ymin := min(bbox.ymin),
+            xmax := max(bbox.xmax),
+            ymax := max(bbox.ymax),
+            geom := ST_Union_Agg(geom)
+        ) AS bbox_geom
+    FROM
+        _{set}
+);
+\n"))
+        }
+
         fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
             let sql = values
                 .iter()
@@ -53,25 +76,29 @@ pub mod duckdb {
             None
         }
 
-        fn st_intersects_with_geom(&self, table: &str, geom: &str) -> String {
+        fn table_precompute_geom(&self, other: &str) -> String {
+            format!("getvariable('_{other}_bbox').geom")
+        }
+
+        fn st_intersects_with_geom(&self, table: &str, other: &str) -> String {
             [
-                self.st_intersects_extent_with_geom(table, geom),
+                self.st_intersects_extent_with_geom(table, other.replace(".geom", "").as_str()),
                 format!(
                     "ST_Intersects(
-        {geom},
-        {table}.geom
-    )"
+    {other},
+    {table}.geom
+)"
                 ),
             ]
             .join(" AND\n")
         }
 
-        fn st_intersects_extent_with_geom(&self, table: &str, geom: &str) -> String {
+        fn st_intersects_extent_with_geom(&self, table: &str, other: &str) -> String {
             format!(
-                "{table}.bbox.xmin <= ST_XMax({geom}) AND
-{table}.bbox.xmax >= ST_XMin({geom}) AND
-{table}.bbox.ymin <= ST_YMax({geom}) AND
-{table}.bbox.ymax >= ST_YMin({geom})"
+                "{table}.bbox.xmin <= {other}.xmax AND
+{table}.bbox.xmax >= {other}.xmin AND
+{table}.bbox.ymin <= {other}.ymax AND
+{table}.bbox.ymax >= {other}.ymin"
             )
         }
 

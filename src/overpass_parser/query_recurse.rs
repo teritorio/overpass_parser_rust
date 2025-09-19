@@ -4,7 +4,7 @@ use derivative::Derivative;
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
-use super::{Rule, query::Query};
+use super::{Rule, query::Query, subrequest::SubrequestJoin};
 
 #[derive(Derivative)]
 #[derivative(Default)]
@@ -57,14 +57,17 @@ impl Query for QueryRecurse {
         _sql_dialect: &(dyn SqlDialect + Send + Sync),
         _srid: &str,
         default_set: &str,
-    ) -> String {
+    ) -> SubrequestJoin {
         let from = if self.set.is_none() {
             default_set
         } else {
             self.set.as_ref().unwrap()
         };
 
-        format!("SELECT
+        SubrequestJoin{
+            precompute: None,
+            from: None,
+            clauses: format!("SELECT
     way.*
 FROM
     _{from} AS way
@@ -98,7 +101,8 @@ FROM
         way.id = members.ref
 WHERE
     relation.osm_type = 'r'"
-)
+           )
+        }
     }
 }
 
@@ -170,6 +174,6 @@ FROM
 WHERE
     relation.osm_type = 'r'",
             parse("way;>;")
-                .to_sql(d, "4326", "_"))
+                .to_sql(d, "4326", "_").clauses)
     }
 }
