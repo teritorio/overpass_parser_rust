@@ -23,7 +23,7 @@ pub fn main() {
                 Ok(request) => Request::to_sql(&request, sql_dialect, "4326", None),
                 Err(e) => panic!("Error parsing query: {e}"),
             };
-            println!("{out}");
+            println!("{}", out.join("\n"));
         }
         None => {
             eprintln!("Failed to read from stdin");

@@ -19,15 +19,15 @@ pub mod postgres {
             }
         }
 
-        fn statement_timeout(&self, timeout: u32) -> String {
-            format!("SET statement_timeout = {timeout};")
+        fn statement_timeout(&self, timeout: u32) -> Option<String> {
+            Some(format!("SET statement_timeout = {timeout};"))
         }
 
         fn is_precompute(&self) -> bool {
             false
         }
 
-        fn precompute(&self, _set: &str, _sql: &str) -> Option<String> {
+        fn precompute(&self, _set: &str, _sql: &str) -> Option<Vec<String>> {
             None
         }
 

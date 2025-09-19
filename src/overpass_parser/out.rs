@@ -186,8 +186,7 @@ mod tests {
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
-                assert_eq!("SET statement_timeout = 25000;
-WITH
+                assert_eq!(vec!["SET statement_timeout = 25000;", "WITH
 _a AS (
     SELECT
         *
@@ -257,7 +256,7 @@ _out_b AS (
 SELECT * FROM _out_a
 UNION ALL
 SELECT * FROM _out_b
-;", sql);
+;"], sql);
             }
             Err(e) => {
                 println!("Error parsing query: {e}");

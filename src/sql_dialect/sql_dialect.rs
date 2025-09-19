@@ -3,11 +3,11 @@ pub trait SqlDialect: Send + Sync {
         format!("'{}'", string.replace('\'', "''"))
     }
 
-    fn statement_timeout(&self, timeout: u32) -> String;
+    fn statement_timeout(&self, timeout: u32) -> Option<String>;
 
     fn is_precompute(&self) -> bool;
 
-    fn precompute(&self, set: &str, sql: &str) -> Option<String>;
+    fn precompute(&self, set: &str, sql: &str) -> Option<Vec<String>>;
 
     fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String;
 

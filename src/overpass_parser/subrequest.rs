@@ -126,7 +126,7 @@ impl Subrequest {
         Ok(subrequest)
     }
 
-    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> Vec<String> {
         let mut precomputed = Vec::new();
         let mut previous_default_set: String = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
@@ -168,7 +168,7 @@ impl Subrequest {
                 } else {
                     let p = sql_dialect.precompute(set, sql);
                     if p.is_some() {
-                        precomputed_sql.push(p.unwrap());
+                        precomputed_sql.append(&mut p.unwrap());
                         false
                     } else {
                         true
@@ -178,7 +178,6 @@ impl Subrequest {
             .map(|(is_out, set, sql)| (*is_out, set.clone(), sql.clone()))
             .collect::<Vec<(bool, String, String)>>();
 
-        let precomputed_join = precomputed_sql.join("\n");
         let with_join = clauses
             .iter()
             .map(|(_, set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
@@ -191,7 +190,8 @@ impl Subrequest {
             .collect::<Vec<String>>()
             .join("\nUNION ALL\n");
 
-        format!("{precomputed_join}WITH\n{with_join}\n{select}")
+        precomputed_sql.push(format!("WITH\n{with_join}\n{select}\n;"));
+        precomputed_sql
     }
 }
 
@@ -215,7 +215,7 @@ mod tests {
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
-                assert_ne!("", sql);
+                assert_ne!(vec![""], sql);
             }
             Err(e) => {
                 println!("Error parsing query: {e}");
@@ -233,8 +233,8 @@ mod tests {
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
-                assert_eq!("SET statement_timeout = 160000;
-WITH
+                assert_eq!(vec!["SET statement_timeout = 160000;",
+                "WITH
 _a AS (
     SELECT
         *
@@ -281,7 +281,7 @@ _b AS (
         relation.osm_type = 'r'
 )
 
-;", sql);
+;"], sql);
             }
             Err(e) => {
                 println!("Error parsing query: {e}");
@@ -299,7 +299,7 @@ _b AS (
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "4326", None);
-                assert_ne!("", sql);
+                assert_ne!(vec![""], sql);
             }
             Err(e) => {
                 println!("Error parsing query: {e}");

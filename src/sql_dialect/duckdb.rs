@@ -12,19 +12,19 @@ pub mod duckdb {
             format!("'{}'", string.replace('\'', "''"))
         }
 
-        fn statement_timeout(&self, _timeout: u32) -> String {
-            "".to_string()
+        fn statement_timeout(&self, _timeout: u32) -> Option<String> {
+            None
         }
 
         fn is_precompute(&self) -> bool {
             true
         }
 
-        fn precompute(&self, set: &str, sql: &str) -> Option<String> {
-            Some(format!("CREATE TEMP TABLE _{set} AS
-{sql}
-;
-SET variable _{set}_bbox = (
+        fn precompute(&self, set: &str, sql: &str) -> Option<Vec<String>> {
+            Some(vec![
+                format!("CREATE TEMP TABLE _{set} AS\n{sql}\n;"),
+                format!(
+                    "SET variable _{set}_bbox = (
     SELECT
         STRUCT_PACK(
             xmin := min(bbox.xmin),
@@ -35,8 +35,10 @@ SET variable _{set}_bbox = (
         ) AS bbox_geom
     FROM
         _{set}
-);
-\n"))
+)
+;"
+                ),
+            ])
         }
 
         fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {

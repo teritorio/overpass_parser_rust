@@ -27,7 +27,9 @@ pub fn parse_query(query: &str) -> Result<Request, pest::error::Error<Rule>> {
 mod tests {
     use crate::{
         overpass_parser::parse_query,
-        sql_dialect::{duckdb::duckdb::Duckdb, postgres::postgres::Postgres, sql_dialect::SqlDialect},
+        sql_dialect::{
+            duckdb::duckdb::Duckdb, postgres::postgres::Postgres, sql_dialect::SqlDialect,
+        },
     };
     use pretty_assertions::assert_eq;
 
@@ -47,8 +49,8 @@ mod tests {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
         let sql = request.to_sql(d, "4326", None);
-        assert_eq!("SET statement_timeout = 25000;
-WITH
+        assert_eq!(vec!["SET statement_timeout = 25000;",
+"WITH
 _a AS (
     SELECT
         *
@@ -119,22 +121,20 @@ _out_k AS (
         _k
 )
 SELECT * FROM _out_k
-;",
+;"],
 sql);
 
         let d = &Duckdb as &(dyn SqlDialect + Send + Sync);
 
         let sql = request.to_sql(d, "4326", None);
-        assert_eq!("
-CREATE TEMP TABLE _a AS
+        assert_eq!(vec!["CREATE TEMP TABLE _a AS
 SELECT
     *
 FROM
     area_by_id
 WHERE
     (id = 3600166718)
-;
-SET variable _a_bbox = (
+;", "SET variable _a_bbox = (
     SELECT
         STRUCT_PACK(
             xmin := min(bbox.xmin),
@@ -145,9 +145,8 @@ SET variable _a_bbox = (
         ) AS bbox_geom
     FROM
         _a
-);
-
-WITH
+)
+;", "WITH
 _k AS (
     WITH
     _x AS (
@@ -216,7 +215,7 @@ _out_k AS (
         _k
 )
 SELECT * FROM _out_k
-;",
+;"],
 sql);
-}
+    }
 }

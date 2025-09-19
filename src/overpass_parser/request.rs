@@ -50,10 +50,13 @@ impl Request {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         finalizer: Option<&str>,
-    ) -> String {
-        let select = self.subrequest.to_sql(sql_dialect, srid);
+    ) -> Vec<String> {
+        let mut select = self.subrequest.to_sql(sql_dialect, srid);
         let timeout = sql_dialect.statement_timeout(self.timeout.unwrap_or(180).min(500) * 1000);
-        format!("{timeout}\n{select}\n;")
+        if let Some(t) = timeout {
+            select.insert(0, t);
+        }
+        select
     }
 }
 
@@ -94,7 +97,7 @@ mod tests {
                 Ok(request) => {
                     let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                     let sql = request.to_sql(d, "4326", None);
-                    assert_ne!("", sql);
+                    assert_ne!(vec![""], sql);
                 }
                 Err(e) => {
                     println!("Error parsing query: {e}");
