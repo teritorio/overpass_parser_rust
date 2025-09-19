@@ -42,10 +42,10 @@ SET variable _{set}_bbox = (
         fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
             let sql = values
                 .iter()
-                .map(|value| format!("{field} = {}", value.to_string()))
+                .map(|value| format!("{field} = {value}"))
                 .collect::<Vec<String>>()
                 .join(" OR ");
-            format!("({})", sql)
+            format!("({sql})")
         }
 
         fn hash_exists(&self, key: &str) -> String {

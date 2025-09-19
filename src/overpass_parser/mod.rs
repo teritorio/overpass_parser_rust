@@ -122,7 +122,7 @@ SELECT * FROM _out_k
 ;",
 sql);
 
-        let d = &Duckdb::default() as &(dyn SqlDialect + Send + Sync);
+        let d = &Duckdb as &(dyn SqlDialect + Send + Sync);
 
         let sql = request.to_sql(d, "4326", None);
         assert_eq!("
