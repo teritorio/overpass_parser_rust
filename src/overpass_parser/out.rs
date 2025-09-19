@@ -93,10 +93,10 @@ impl Out {
                 ",
     'bounds', CASE osm_type = 'w' OR osm_type = 'r'
     WHEN true THEN {json_build_object}(
-        'minlon', ST_XMin(ST_Envelope({st_transform_reverse}))::numeric,
-        'minlat', ST_YMin(ST_Envelope({st_transform_reverse}))::numeric,
-        'maxlon', ST_XMax(ST_Envelope({st_transform_reverse}))::numeric,
-        'maxlat', ST_YMax(ST_Envelope({st_transform_reverse}))::numeric
+        'minlon', ST_XMin({st_transform_reverse})::numeric,
+        'minlat', ST_YMin({st_transform_reverse})::numeric,
+        'maxlon', ST_XMax({st_transform_reverse})::numeric,
+        'maxlat', ST_YMax({st_transform_reverse})::numeric
     )
     END"
             )
@@ -205,10 +205,10 @@ _out_a AS (
         'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
         'bounds', CASE osm_type = 'w' OR osm_type = 'r'
         WHEN true THEN jsonb_build_object(
-            'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+            'minlon', ST_XMin(ST_Transform(geom, 4326))::numeric,
+            'minlat', ST_YMin(ST_Transform(geom, 4326))::numeric,
+            'maxlon', ST_XMax(ST_Transform(geom, 4326))::numeric,
+            'maxlat', ST_YMax(ST_Transform(geom, 4326))::numeric
         )
         END,
         'geometry', CASE osm_type
@@ -238,10 +238,10 @@ _out_b AS (
         'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 4326))::numeric END,
         'bounds', CASE osm_type = 'w' OR osm_type = 'r'
         WHEN true THEN jsonb_build_object(
-            'minlon', ST_XMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'minlat', ST_YMin(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'maxlon', ST_XMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric,
-            'maxlat', ST_YMax(ST_Envelope(ST_Transform(geom, 4326)))::numeric
+            'minlon', ST_XMin(ST_Transform(geom, 4326))::numeric,
+            'minlat', ST_YMin(ST_Transform(geom, 4326))::numeric,
+            'maxlon', ST_XMax(ST_Transform(geom, 4326))::numeric,
+            'maxlat', ST_YMax(ST_Transform(geom, 4326))::numeric
         )
         END,
         'geometry', CASE osm_type
