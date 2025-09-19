@@ -105,11 +105,19 @@ pub mod duckdb {
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({geom}, 'EPSG:4326', 'EPSG:{srid}')")
+            if srid == "4326" {
+                geom.to_string()
+            } else {
+                format!("ST_Transform({geom}, 'EPSG:4326', 'EPSG:{srid}')")
+            }
         }
 
         fn st_transform_reverse(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({geom}, 'EPSG:{srid}', 'EPSG:4326')")
+            if srid == "4326" {
+                geom.to_string()
+            } else {
+                format!("ST_Transform({geom}, 'EPSG:{srid}', 'EPSG:4326')")
+            }
         }
 
         fn st_asgeojson(&self, geom: &str, _max_decimal_digits: usize) -> String {

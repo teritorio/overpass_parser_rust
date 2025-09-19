@@ -188,10 +188,10 @@ WHERE
     osm_type = 'n' AND
     (tags?'a' AND tags->>'a' = 'b') AND
     ST_Intersects(
-        ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 4326),
+        ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 9999),
         _a.geom
     )",
-            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "4326", "_").clauses
+            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "9999", "_").clauses
         );
     }
 
@@ -207,10 +207,10 @@ FROM
 WHERE
     osm_type = 'n' AND
     ST_Intersects(
-        ST_Transform('SRID=4326;POLYGON(2 1, 4 3, 6 5)'::geometry, 4326),
+        ST_Transform('SRID=4326;POLYGON(2 1, 4 3, 6 5)'::geometry, 9999),
         _a.geom
     )",
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "4326", "_").clauses
+            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_").clauses
         );
     }
 }

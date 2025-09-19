@@ -174,6 +174,6 @@ FROM
 WHERE
     relation.osm_type = 'r'",
             parse("way;>;")
-                .to_sql(d, "4326", "_").clauses)
+                .to_sql(d, "9999", "_").clauses)
     }
 }

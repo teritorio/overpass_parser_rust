@@ -166,7 +166,7 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id",
-            parse("(node->.a;way->.b;);").to_sql(d, "4326", "_").clauses
+            parse("(node->.a;way->.b;);").to_sql(d, "9999", "_").clauses
         )
     }
 }

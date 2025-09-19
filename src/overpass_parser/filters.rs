@@ -377,25 +377,25 @@ mod tests {
 
         assert_eq!(
             "ST_Intersects(
-        ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 4326),
+        ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 9999),
         _.geom
     )",
-            parse("(-1.1,2,3,4)").to_sql(d, "_", "4326").clauses
+            parse("(-1.1,2,3,4)").to_sql(d, "_", "9999").clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(d, "_", "4326").clauses
+            parse("(11111111111111)").to_sql(d, "_", "9999").clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(d, "_", "4326").clauses
+            parse("(id:1,2,3)").to_sql(d, "_", "9999").clauses
         );
         assert_eq!(
             "ST_Intersects(
         _a.geom,
         _.geom
     )",
-            parse("(area.a)").to_sql(d, "_", "4326").clauses
+            parse("(area.a)").to_sql(d, "_", "9999").clauses
         );
         assert_eq!(
             "ST_Intersects(
@@ -413,10 +413,10 @@ mod tests {
                     ) + 180) / 6)
                 ),
                 12.3
-            ), 4326),
+            ), 9999),
         _.geom
     )",
-            parse("(around.a:12.3)").to_sql(d, "_", "4326").clauses
+            parse("(around.a:12.3)").to_sql(d, "_", "9999").clauses
         );
     }
 }

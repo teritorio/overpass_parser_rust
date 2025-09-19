@@ -48,7 +48,7 @@ mod tests {
         let request = parse_query(query).expect("Failed to parse query");
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        let sql = request.to_sql(d, "4326", None);
+        let sql = request.to_sql(d, "9999", None);
         assert_eq!(vec!["SET statement_timeout = 25000;",
 "WITH
 _a AS (
@@ -126,7 +126,7 @@ sql);
 
         let d = &Duckdb as &(dyn SqlDialect + Send + Sync);
 
-        let sql = request.to_sql(d, "4326", None);
+        let sql = request.to_sql(d, "9999", None);
         assert_eq!(vec!["CREATE TEMP TABLE _a AS
 SELECT
     *
@@ -195,8 +195,8 @@ _out_k AS (
         (json_object(
         'type', CASE osm_type WHEN 'n' THEN 'node' WHEN 'w' THEN 'way' WHEN 'r' THEN 'relation' WHEN 'a' THEN 'area' END,
         'id', id,
-        'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 'EPSG:4326', 'EPSG:4326'))::numeric END,
-        'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 'EPSG:4326', 'EPSG:4326'))::numeric END,
+        'lon', CASE osm_type WHEN 'n' THEN ST_X(ST_Transform(geom, 'EPSG:9999', 'EPSG:4326'))::numeric END,
+        'lat', CASE osm_type WHEN 'n' THEN ST_Y(ST_Transform(geom, 'EPSG:9999', 'EPSG:4326'))::numeric END,
         'timestamp', created,
         'version', version,
         'changeset', changeset,
@@ -204,8 +204,8 @@ _out_k AS (
         'uid', uid,
         'center', CASE osm_type = 'w' OR osm_type = 'r'
             WHEN true THEN json_object(
-                'lon', ST_X(ST_PointOnSurface(ST_Transform(geom, 'EPSG:4326', 'EPSG:4326')))::numeric,
-                'lat', ST_Y(ST_PointOnSurface(ST_Transform(geom, 'EPSG:4326', 'EPSG:4326')))::numeric
+                'lon', ST_X(ST_PointOnSurface(ST_Transform(geom, 'EPSG:9999', 'EPSG:4326')))::numeric,
+                'lat', ST_Y(ST_PointOnSurface(ST_Transform(geom, 'EPSG:9999', 'EPSG:4326')))::numeric
             )
         END,
         'nodes', nodes,

@@ -93,11 +93,19 @@ pub mod postgres {
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {
-            format!("ST_Transform({geom}, {srid})")
+            if srid == "4326" {
+                geom.to_string()
+            } else {
+                format!("ST_Transform({geom}, {srid})")
+            }
         }
 
-        fn st_transform_reverse(&self, geom: &str, _srid: &str) -> String {
-            format!("ST_Transform({geom}, 4326)")
+        fn st_transform_reverse(&self, geom: &str, srid: &str) -> String {
+            if srid == "4326" {
+                geom.to_string()
+            } else {
+                format!("ST_Transform({geom}, 4326)")
+            }
         }
 
         fn st_asgeojson(&self, geom: &str, max_decimal_digits: usize) -> String {

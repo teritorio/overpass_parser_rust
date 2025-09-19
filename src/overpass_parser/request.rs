@@ -96,7 +96,7 @@ mod tests {
             match parse_query(query) {
                 Ok(request) => {
                     let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
-                    let sql = request.to_sql(d, "4326", None);
+                    let sql = request.to_sql(d, "9999", None);
                     assert_ne!(vec![""], sql);
                 }
                 Err(e) => {

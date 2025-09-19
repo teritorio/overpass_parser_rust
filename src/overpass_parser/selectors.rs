@@ -371,35 +371,35 @@ mod tests {
     fn test_matches_to_sql() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(parse("[\"amenity\"]").to_sql(d, "4326"), "tags?'amenity'");
-        assert_eq!(parse("['amenity']").to_sql(d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "9999"), "tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "9999"), "tags?'amenity'");
         assert_eq!(
-            parse("[shop=florist]").to_sql(d, "4326"),
+            parse("[shop=florist]").to_sql(d, "9999"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse("[shop=\"florist\"]").to_sql(d, "4326"),
+            parse("[shop=\"florist\"]").to_sql(d, "9999"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse(r#"[shop~"pizza.*"]"#).to_sql(d, "4326"),
+            parse(r#"[shop~"pizza.*"]"#).to_sql(d, "9999"),
             "(tags?'shop' AND tags->>'shop' ~ 'pizza.*')"
         );
         assert_eq!(
-            parse("[highway=footway][footway=traffic_island]").to_sql(d, "4326"),
+            parse("[highway=footway][footway=traffic_island]").to_sql(d, "9999"),
             "(tags?'highway' AND tags->>'highway' = 'footway') AND (tags?'footway' AND tags->>'footway' = 'traffic_island')"
         );
-        assert_eq!(parse("[!amenity]").to_sql(d, "4326"), "NOT tags?'amenity'");
+        assert_eq!(parse("[!amenity]").to_sql(d, "9999"), "NOT tags?'amenity'");
     }
 
     #[test]
     fn test_matches_to_sql_duckdb() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(parse("[\"amenity\"]").to_sql(d, "4326"), "tags?'amenity'");
-        assert_eq!(parse("['amenity']").to_sql(d, "4326"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "9999"), "tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "9999"), "tags?'amenity'");
         assert_eq!(
-            parse("[shop=florist]").to_sql(d, "4326"),
+            parse("[shop=florist]").to_sql(d, "9999"),
             "(tags?'shop' AND tags->>'shop' = 'florist')"
         );
     }
@@ -408,12 +408,12 @@ mod tests {
     fn test_matches_to_sql_quote() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
+            parse(r#"[name="l'l"]"#).to_sql(d, "9999"),
             "(tags?'name' AND tags->>'name' = 'l''l')"
         );
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name~"l'l"]"#).to_sql(d, "4326"),
+            parse(r#"[name~"l'l"]"#).to_sql(d, "9999"),
             "(tags?'name' AND tags->>'name' ~ 'l''l')"
         );
 
@@ -421,7 +421,7 @@ mod tests {
             postgres_escape_literal: Some(Box::new(|s| format!("_{s}_"))),
         } as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(d, "4326"),
+            parse(r#"[name="l'l"]"#).to_sql(d, "9999"),
             "(tags?_name_ AND tags->>_name_ = _l'l_)"
         );
     }
@@ -432,7 +432,7 @@ mod tests {
     //     assert_eq!(
     //         parse(r#"[power!~"no|cable|line|minor_line$"][power]"#)
     //             .sort()
-    //             .to_sql(&d, 4326),
+    //             .to_sql(&d, 9999),
     //         "tags?'power' AND (NOT tags?'power' OR tags->>'power' !~ '(no|cable|line|minor_line$)')"
     //     );
     // }
