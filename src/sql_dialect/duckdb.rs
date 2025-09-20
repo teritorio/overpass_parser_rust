@@ -66,6 +66,31 @@ pub mod duckdb {
             "json_object".to_string()
         }
 
+        fn json_build_bbox(&self, geom: &str, srid: &str) -> String {
+            let g = self.st_transform_reverse(geom, srid);
+            if g == "geom" {
+                format!(
+                    "{}(
+    'minlon', bbox.xmin,
+    'minlat', bbox.ymin,
+    'maxlon', bbox.xmax,
+    'maxlat', bbox.ymax
+)",
+                    self.json_build_object()
+                )
+            } else {
+                format!(
+                    "{}(
+    'minlon', ST_XMin({g}),
+    'minlat', ST_YMin({g}),
+    'maxlon', ST_XMax({g}),
+    'maxlat', ST_YMax({g})
+)",
+                    self.json_build_object()
+                )
+            }
+        }
+
         fn jsonb_agg(&self) -> String {
             "json_group_array".to_string()
         }

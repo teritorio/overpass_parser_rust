@@ -1,6 +1,7 @@
 use pest::iterators::Pair;
 
 use derivative::Derivative;
+use regex::Regex;
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
@@ -64,6 +65,8 @@ impl Out {
         let st_asgeojson = sql_dialect.st_asgeojson(&st_transform_reverse, 7);
         let jsonb_agg = sql_dialect.jsonb_agg();
 
+        let replace = Regex::new(r"\n").unwrap();
+
         let meta_fields = if meta {
             ",\n    'timestamp', created,
     'version', version,
@@ -92,13 +95,9 @@ impl Out {
             format!(
                 ",
     'bounds', CASE osm_type = 'w' OR osm_type = 'r'
-    WHEN true THEN {json_build_object}(
-        'minlon', ST_XMin({st_transform_reverse})::numeric,
-        'minlat', ST_YMin({st_transform_reverse})::numeric,
-        'maxlon', ST_XMax({st_transform_reverse})::numeric,
-        'maxlat', ST_YMax({st_transform_reverse})::numeric
-    )
-    END"
+    WHEN true THEN {}
+    END",
+                sql_dialect.json_build_bbox("geom", srid).replace("\n", "\n    ")
             )
         } else {
             "".to_string()

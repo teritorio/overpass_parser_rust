@@ -19,6 +19,8 @@ pub trait SqlDialect: Send + Sync {
 
     fn json_build_object(&self) -> String;
 
+    fn json_build_bbox(&self, geom: &str, srid: &str) -> String;
+
     fn jsonb_agg(&self) -> String;
 
     fn st_union(&self) -> String;

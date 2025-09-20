@@ -58,6 +58,19 @@ pub mod postgres {
             "jsonb_build_object".to_string()
         }
 
+        fn json_build_bbox(&self, geom: &str, srid: &str) -> String {
+            let g = self.st_transform_reverse(geom, srid);
+            format!(
+                "{}(
+    'minlon', ST_XMin({g})::numeric,
+    'minlat', ST_YMin({g})::numeric,
+    'maxlon', ST_XMax({g})::numeric,
+    'maxlat', ST_YMax({g})::numeric
+)",
+                self.json_build_object()
+            )
+        }
+
         fn jsonb_agg(&self) -> String {
             "jsonb_agg".to_string()
         }
