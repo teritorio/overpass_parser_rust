@@ -153,7 +153,7 @@ impl Filter {
             .join(", ");
         sql_dialect.st_intersects_with_geom(
             set,
-            &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON({coords})'::geometry"), srid),
+            &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON(({coords}))'::geometry"), srid),
         )
     }
 
