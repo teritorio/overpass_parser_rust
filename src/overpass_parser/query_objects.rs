@@ -204,10 +204,11 @@ WHERE
     *
 FROM
     _a
+    JOIN VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS _poly_15599741043204530343(geom) ON true
 WHERE
     osm_type = 'n' AND
     ST_Intersects(
-        ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999),
+        _poly_15599741043204530343.geom,
         _a.geom
     )",
             parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_").clauses

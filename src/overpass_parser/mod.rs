@@ -146,6 +146,23 @@ WHERE
     FROM
         _a
 )
+;", "CREATE TEMP TABLE _poly_17221393697116889690 AS
+SELECT
+    *
+FROM
+    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS geom(geom)
+;", "SET variable _poly_17221393697116889690_bbox = (
+    SELECT
+        STRUCT_PACK(
+            xmin := min(bbox.xmin),
+            ymin := min(bbox.ymin),
+            xmax := max(bbox.xmax),
+            ymax := max(bbox.ymax),
+            geom := ST_Union_Agg(geom)
+        ) AS bbox_geom
+    FROM
+        _a
+)
 ;", "WITH
 _k AS (
     WITH

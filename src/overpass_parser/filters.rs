@@ -2,6 +2,8 @@ use pest::iterators::Pair;
 
 use derivative::Derivative;
 use regex::Regex;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
@@ -145,16 +147,26 @@ impl Filter {
         set: &str,
         poly: &[(f64, f64)],
         srid: &str,
-    ) -> String {
+    ) -> SubrequestJoin {
         let coords = poly
             .iter()
             .map(|&(lat, lon)| format!("{lon} {lat}"))
             .collect::<Vec<String>>()
             .join(", ");
-        sql_dialect.st_intersects_with_geom(
-            set,
-            &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON(({coords}))'::geometry"), srid),
-        )
+        let poly = &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON(({coords}))'::geometry"), srid);
+
+        let mut hasher = DefaultHasher::new();
+        poly.hash(&mut hasher);
+        let poly_id = format!("poly_{}", hasher.finish());
+
+        SubrequestJoin {
+            precompute: sql_dialect
+                .is_precompute()
+                .then(|| vec![poly_id.to_string()]),
+            from: (!sql_dialect.is_precompute()).then(|| format!("JOIN VALUES(({poly})) AS _{poly_id}(geom) ON true")),
+            clauses: sql_dialect
+                .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(poly_id.as_str()).as_str()),
+        }
     }
 
     fn around_clause(
@@ -234,11 +246,7 @@ impl Filter {
             });
         }
         if let Some(poly) = &self.poly {
-            clauses.push(SubrequestJoin {
-                precompute: None,
-                from: None,
-                clauses: Self::poly_clauses(sql_dialect, set, poly, srid),
-            });
+            clauses.push(Self::poly_clauses(sql_dialect, set, poly, srid));
         }
         if let Some(ids) = &self.ids {
             clauses.push(SubrequestJoin {
@@ -381,6 +389,13 @@ mod tests {
         _.geom
     )",
             parse("(-1.1,2,3,4)").to_sql(d, "_", "9999").clauses
+        );
+        assert_eq!(
+            "ST_Intersects(
+        _poly_11689077968748950118.geom,
+        _.geom
+    )",
+            parse("(poly:\"1 2 3 4\")").to_sql(d, "_", "9999").clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
