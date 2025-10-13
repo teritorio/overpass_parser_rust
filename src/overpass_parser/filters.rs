@@ -322,12 +322,12 @@ impl Filters {
             .iter()
             .filter_map(|sj| sj.from.clone())
             .collect::<Vec<String>>()
-            .join(" AND ");
+            .join("\n    ");
         let clauses = s
             .iter()
             .map(|sj| sj.clauses.clone())
             .collect::<Vec<String>>()
-            .join(" AND ");
+            .join(" AND\n    ");
         SubrequestJoin {
             precompute: Some(
                 s.iter()
@@ -353,16 +353,13 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
 
-    fn parse(query: &str) -> Filter {
+    fn parse(query: &str) -> Filters {
         match parse_query(format!("node{query};").as_str()) {
             Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
                 SubrequestType::QueryType(query_type) => match query_type {
                     QueryType::QueryObjects(query_objets) => query_objets
                         .filters
                         .as_ref()
-                        .unwrap()
-                        .filters
-                        .first()
                         .unwrap()
                         .clone(),
                     _ => panic!(
@@ -432,6 +429,19 @@ mod tests {
         _.geom
     )",
             parse("(around.a:12.3)").to_sql(d, "_", "9999").clauses
+        );
+
+        // Combined filters
+        assert_eq!(
+            "ST_Intersects(
+        _poly_11689077968748950118.geom,
+        _.geom
+    ) AND
+    ST_Intersects(
+        _a.geom,
+        _.geom
+    )",
+            parse("(poly:\"1 2 3 4\")(area.a)").to_sql(d, "_", "9999").clauses
         );
     }
 }

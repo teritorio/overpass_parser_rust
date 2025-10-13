@@ -33,12 +33,13 @@ filter_area = { "area" ~ DOT_ID }
 filter_around_core = { DOT_ID }
 filter_around_radius = { number }
 filter_around = { "around" ~ filter_around_core ~ ":" ~ filter_around_radius }
-filter = { "(" ~ ( filter_bbox | filter_poly | filter_osm_id | filter_osm_ids | filter_area | filter_around ) ~ ")" }
+filter = _{ "(" ~ ( filter_bbox | filter_poly | filter_osm_id | filter_osm_ids | filter_area | filter_around ) ~ ")" }
+filters = { filter+ }
 
 asignation = { "->" ~ DOT_ID }
 
 object_type = { "node" | "way" | "relation" | "area" | "nwr" }
-query_object = { object_type ~ DOT_ID? ~ selector* ~ filter* ~ asignation? }
+query_object = { object_type ~ DOT_ID? ~ selector* ~ filters? ~ asignation? }
 query_recurse = { DOT_ID? ~ ( "<" | "<<" | ">" | ">>" ) ~ asignation? }
 query_union = { "(" ~ (query_sequence ~ ";" )+ ~ ")" ~ asignation? }
 query_sequence = { query_object | query_recurse | query_union }

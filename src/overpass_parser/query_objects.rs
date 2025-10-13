@@ -35,7 +35,7 @@ impl Query for QueryObjects {
                                 .selectors
                                 .push(Selector::from_pest(inner_pair)?);
                         }
-                        Rule::filter => {
+                        Rule::filters => {
                             query_objects.filters = Some(Filters::from_pest(inner_pair)?);
                         }
                         Rule::ID => {

@@ -33,14 +33,14 @@ mod tests {
     };
     use pretty_assertions::assert_eq;
 
-    // TODO autres test
+    // TODO other tests
 
     #[test]
     fn test_to_sql() {
         let query = "[out:json][timeout:25];
         area(3600166718)->.a;
         (
-          nwr[a=\"Ñ'\"][b='\"'](area.a)->.x;
+          nwr[a=\"Ñ'\"][b='\"'](poly:\"1 2 3 4\")(area.a)->.x;
           nwr[c](area.a)->.z;
         )->.k;
         .k out center meta;";
@@ -66,9 +66,14 @@ _k AS (
         *
     FROM
         nwr_by_geom
+        JOIN VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS _poly_11689077968748950118(geom) ON true
         JOIN _a ON true
     WHERE
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
+        ST_Intersects(
+            _poly_11689077968748950118.geom,
+            nwr_by_geom.geom
+        ) AND
         ST_Intersects(
             _a.geom,
             nwr_by_geom.geom
@@ -173,6 +178,14 @@ _k AS (
         nwr_by_geom
     WHERE
         ((tags->>'a') IS NOT NULL AND (tags->>'a') = 'Ñ''') AND ((tags->>'b') IS NOT NULL AND (tags->>'b') = '\"') AND
+        nwr_by_geom.bbox.xmin <= getvariable('_poly_17221393697116889690_bbox').xmax AND
+        nwr_by_geom.bbox.xmax >= getvariable('_poly_17221393697116889690_bbox').xmin AND
+        nwr_by_geom.bbox.ymin <= getvariable('_poly_17221393697116889690_bbox').ymax AND
+        nwr_by_geom.bbox.ymax >= getvariable('_poly_17221393697116889690_bbox').ymin AND
+        ST_Intersects(
+            getvariable('_poly_17221393697116889690_bbox').geom,
+            nwr_by_geom.geom
+        ) AND
         nwr_by_geom.bbox.xmin <= getvariable('_a_bbox').xmax AND
         nwr_by_geom.bbox.xmax >= getvariable('_a_bbox').xmin AND
         nwr_by_geom.bbox.ymin <= getvariable('_a_bbox').ymax AND
