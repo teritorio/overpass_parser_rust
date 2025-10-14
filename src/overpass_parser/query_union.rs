@@ -56,27 +56,29 @@ impl Query for QueryUnion {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> SubrequestJoin {
+    ) -> Vec<SubrequestJoin> {
         let mut precomputed = Vec::new();
         let mut previous_default_set = default_set.to_string();
         let replace = Regex::new(r"^").unwrap();
 
-        let clauses = self
+        let mut clauses = Vec::new();
+        self
             .queries
             .iter()
-            .map(|query| {
-                let sj = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
-                precomputed.extend(sj.precompute.unwrap_or_default());
-                let set = match query.asignation() {
-                    Some(asignation) => asignation.to_string(),
-                    None => {
-                        previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
-                        previous_default_set.clone()
-                    }
-                };
-                (set, sj.clauses)
-            })
-            .collect::<Vec<(String, String)>>();
+            .for_each(|query| {
+                let sjs = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                sjs.iter().for_each(|sj| {
+                    precomputed.extend(sj.precompute.clone().unwrap_or_default());
+                    let set = match query.asignation() {
+                        Some(asignation) => asignation.to_string(),
+                        None => {
+                            previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
+                            previous_default_set.clone()
+                        }
+                    };
+                    clauses.push((set, sj.clauses.clone()));
+                })
+            });
 
         let with = clauses
             .iter()
@@ -90,7 +92,7 @@ impl Query for QueryUnion {
             .collect::<Vec<String>>()
             .join(" UNION\n    ");
 
-        SubrequestJoin {
+        vec!(SubrequestJoin {
             precompute: Some(precomputed),
             from: None,
             clauses: format!(
@@ -104,7 +106,7 @@ FROM (
 ORDER BY
     osm_type, id"
             ),
-        }
+        })
     }
 }
 
@@ -166,7 +168,7 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id",
-            parse("(node->.a;way->.b;);").to_sql(d, "9999", "_").clauses
+            parse("(node->.a;way->.b;);").to_sql(d, "9999", "_")[0].clauses
         )
     }
 }

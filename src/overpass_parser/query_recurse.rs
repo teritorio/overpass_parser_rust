@@ -57,14 +57,14 @@ impl Query for QueryRecurse {
         _sql_dialect: &(dyn SqlDialect + Send + Sync),
         _srid: &str,
         default_set: &str,
-    ) -> SubrequestJoin {
+    ) -> Vec<SubrequestJoin> {
         let from = if self.set.is_none() {
             default_set
         } else {
             self.set.as_ref().unwrap()
         };
 
-        SubrequestJoin{
+        vec!(SubrequestJoin{
             precompute: None,
             from: None,
             clauses: format!("SELECT
@@ -102,7 +102,7 @@ FROM
 WHERE
     relation.osm_type = 'r'"
            )
-        }
+        })
     }
 }
 
@@ -174,6 +174,6 @@ FROM
 WHERE
     relation.osm_type = 'r'",
             parse("way;>;")
-                .to_sql(d, "9999", "_").clauses)
+                .to_sql(d, "9999", "_")[0].clauses)
     }
 }

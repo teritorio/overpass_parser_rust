@@ -61,7 +61,7 @@ impl Query for QueryType {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> SubrequestJoin {
+    ) -> Vec<SubrequestJoin> {
         match self {
             QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
@@ -130,13 +130,12 @@ impl Subrequest {
         let mut precomputed = Vec::new();
         let mut previous_default_set: String = "_".into();
         let replace = Regex::new(r"(?m)^").unwrap();
-        let mut clauses = self
-            .queries
-            .iter()
-            .map(|query| match query.as_ref() {
-                SubrequestType::QueryType(query_type) => {
-                    let sj = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
-                    precomputed.extend(sj.precompute.unwrap_or_default());
+        let mut clauses = Vec::new();
+        self.queries.iter().for_each(|query| match query.as_ref() {
+            SubrequestType::QueryType(query_type) => {
+                let sjs = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
+                sjs.iter().for_each(|sj| {
+                    precomputed.extend(sj.precompute.clone().unwrap_or_default());
                     let set: String = match query_type.asignation() {
                         Some(asignation) => asignation.to_string(),
                         None => {
@@ -145,20 +144,20 @@ impl Subrequest {
                             previous_default_set.clone()
                         }
                     };
-                    (false, set, sj.clauses)
-                }
-                SubrequestType::Out(out) => (
-                    true,
-                    format!(
-                        "out_{}",
-                        out.set
-                            .clone()
-                            .unwrap_or(previous_default_set.as_str().into())
-                    ),
-                    out.to_sql(sql_dialect, srid, previous_default_set.as_str()),
+                    clauses.push((false, set, sj.clauses.clone()))
+                });
+            }
+            SubrequestType::Out(out) => clauses.push((
+                true,
+                format!(
+                    "out_{}",
+                    out.set
+                        .clone()
+                        .unwrap_or(previous_default_set.as_str().into())
                 ),
-            })
-            .collect::<Vec<(bool, String, String)>>();
+                out.to_sql(sql_dialect, srid, previous_default_set.as_str()),
+            )),
+        });
         let mut precomputed_sql = Vec::new();
         clauses = clauses
             .iter()

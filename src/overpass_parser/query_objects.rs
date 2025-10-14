@@ -80,7 +80,7 @@ impl Query for QueryObjects {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> SubrequestJoin {
+    ) -> Vec<SubrequestJoin> {
         let p: String;
         let mut from: String = if self.set.is_none() {
             let from: String = self.object_type.clone().into();
@@ -129,7 +129,7 @@ impl Query for QueryObjects {
 
         let where_clause = format!("WHERE\n    {}", where_clauses.join(" AND\n    "));
 
-        SubrequestJoin {
+        vec!(SubrequestJoin {
             precompute: Some(precomputed),
             from: None,
             clauses: format!(
@@ -139,7 +139,7 @@ FROM
     {from}
 {where_clause}"
             ),
-        }
+        })
     }
 }
 
@@ -191,7 +191,7 @@ WHERE
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 9999),
         _a.geom
     )",
-            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "9999", "_").clauses
+            parse("node.a[a=b](1,2,3,4)->.b").to_sql(d, "9999", "_")[0].clauses
         );
     }
 
@@ -211,7 +211,7 @@ WHERE
         _poly_15599741043204530343.geom,
         _a.geom
     )",
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_").clauses
+            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_")[0].clauses
         );
     }
 }

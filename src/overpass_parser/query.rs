@@ -11,5 +11,5 @@ pub trait Query {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
         default_set: &str,
-    ) -> SubrequestJoin;
+    ) -> Vec<SubrequestJoin>;
 }
