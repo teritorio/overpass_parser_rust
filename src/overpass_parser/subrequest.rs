@@ -78,6 +78,7 @@ pub enum SubrequestType {
 
 #[derive(Debug, Clone)]
 pub struct SubrequestJoin {
+    pub precompute_set: Option<String>,
     pub precompute: Option<Vec<String>>,
     pub from: Option<String>,
     pub clauses: String,
@@ -136,7 +137,7 @@ impl Subrequest {
                 let sjs = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
                 sjs.iter().for_each(|sj| {
                     precomputed.extend(sj.precompute.clone().unwrap_or_default());
-                    let set: String = match query_type.asignation() {
+                    let set: String = match sj.precompute_set.clone().or( query_type.asignation().map(|a| a.to_string())) {
                         Some(asignation) => asignation.to_string(),
                         None => {
                             previous_default_set =

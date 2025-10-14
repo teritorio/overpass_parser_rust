@@ -147,7 +147,7 @@ impl Filter {
         set: &str,
         poly: &[(f64, f64)],
         srid: &str,
-    ) -> SubrequestJoin {
+    ) -> (SubrequestJoin, SubrequestJoin) {
         let coords = poly
             .iter()
             .map(|&(lat, lon)| format!("{lon} {lat}"))
@@ -159,14 +159,32 @@ impl Filter {
         poly.hash(&mut hasher);
         let poly_id = format!("poly_{}", hasher.finish());
 
-        SubrequestJoin {
-            precompute: sql_dialect
-                .is_precompute()
-                .then(|| vec![poly_id.to_string()]),
-            from: (!sql_dialect.is_precompute()).then(|| format!("JOIN VALUES(({poly})) AS _{poly_id}(geom) ON true")),
-            clauses: sql_dialect
-                .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(poly_id.as_str()).as_str()),
-        }
+        (
+            SubrequestJoin {
+                precompute_set: Some(poly_id.to_string()),
+                precompute: None,
+                from: None,
+                clauses: format!("SELECT
+    geom,
+    STRUCT_PACK(
+        xmin := ST_XMin(geom),
+        ymin := ST_YMin(geom),
+        xmax := ST_XMax(geom),
+        ymax := ST_YMax(geom)
+    ) AS bbox
+FROM
+    VALUES(({poly})) AS p(geom)").to_string(),
+            },
+            SubrequestJoin {
+                precompute_set: None,
+                precompute: sql_dialect
+                    .is_precompute()
+                    .then(|| vec![poly_id.to_string()]),
+                from: (!sql_dialect.is_precompute()).then(|| format!("    JOIN _{poly_id} ON true")),
+                clauses: sql_dialect
+                    .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(poly_id.as_str()).as_str()),
+            }
+        )
     }
 
     fn around_clause(
@@ -221,10 +239,11 @@ impl Filter {
         area_id: &str,
     ) -> SubrequestJoin {
         SubrequestJoin {
+            precompute_set: None,
             precompute: sql_dialect
                 .is_precompute()
                 .then(|| vec![area_id.to_string()]),
-            from: (!sql_dialect.is_precompute()).then(|| format!("JOIN _{area_id} ON true")),
+            from: (!sql_dialect.is_precompute()).then(|| format!("    JOIN _{area_id} ON true")),
             clauses: sql_dialect
                 .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(area_id).as_str()),
         }
@@ -235,21 +254,26 @@ impl Filter {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> SubrequestJoin {
+    ) -> (Option<SubrequestJoin>, SubrequestJoin) {
+        let mut pre : Option<SubrequestJoin > = None;
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
             clauses.push(SubrequestJoin {
+                precompute_set: None,
                 precompute: None,
                 from: None,
                 clauses: Self::bbox_clauses(sql_dialect, set, bbox, srid),
             });
         }
         if let Some(poly) = &self.poly {
-            clauses.push(Self::poly_clauses(sql_dialect, set, poly, srid));
+            let (preee, clause) = Self::poly_clauses(sql_dialect, set, poly, srid);
+            pre = Some(preee);
+            clauses.push(clause);
         }
         if let Some(ids) = &self.ids {
             clauses.push(SubrequestJoin {
+                precompute_set: None,
                 precompute: None,
                 from: None,
                 clauses: sql_dialect.id_in_list("id", ids),
@@ -260,6 +284,7 @@ impl Filter {
         }
         if let Some(around) = &self.around {
             clauses.push(SubrequestJoin {
+                precompute_set: None,
                 precompute: None,
                 from: None,
                 clauses: Self::around_clause(sql_dialect, set, srid, around),
@@ -274,18 +299,22 @@ impl Filter {
         let from = clauses
             .iter()
             .filter_map(|c| c.from.clone())
-            .collect::<Vec<String>>()
-            .join("\n");
+            .collect::<Vec<String>>();
         let clauses_join = clauses
             .into_iter()
             .map(|c| c.clauses.replace("\n", "\n    "))
             .collect::<Vec<String>>()
             .join(" AND ");
-        SubrequestJoin {
-            precompute: Some(precompute),
-            from: Some(from),
-            clauses: clauses_join,
-        }
+
+        (
+            pre,
+            SubrequestJoin {
+                precompute_set: None,
+                precompute: Some(precompute),
+                from: (!from.is_empty()).then(|| from.join("\n")),
+                clauses: clauses_join,
+            }
+        )
     }
 }
 
@@ -312,32 +341,44 @@ impl Filters {
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
         srid: &str,
-    ) -> SubrequestJoin {
+    ) -> (Option<SubrequestJoin>, SubrequestJoin) {
+        let mut pre : Option<SubrequestJoin> = None;
         let s = self
             .filters
             .iter()
-            .map(|filter| filter.to_sql(sql_dialect, set, srid))
+            .map(|filter| {
+                let (preee, clause) = filter.to_sql(sql_dialect, set, srid);
+                if preee.is_some() {
+                    pre = preee;
+                }
+                clause
+            })
             .collect::<Vec<SubrequestJoin>>();
         let from = s
             .iter()
             .filter_map(|sj| sj.from.clone())
             .collect::<Vec<String>>()
-            .join("\n    ");
+            .join("\n");
         let clauses = s
             .iter()
             .map(|sj| sj.clauses.clone())
             .collect::<Vec<String>>()
             .join(" AND\n    ");
-        SubrequestJoin {
-            precompute: Some(
-                s.iter()
-                    .filter_map(|c| c.precompute.clone())
-                    .flatten()
-                    .collect(),
-            ),
-            from: (!from.is_empty()).then_some(from),
-            clauses,
-        }
+
+        (
+            pre,
+            SubrequestJoin {
+                precompute_set: None,
+                precompute: Some(
+                    s.iter()
+                        .filter_map(|c| c.precompute.clone())
+                        .flatten()
+                        .collect(),
+                ),
+                from: (!from.is_empty()).then_some(from),
+                clauses,
+            }
+        )
     }
 }
 
@@ -385,29 +426,29 @@ mod tests {
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 9999),
         _.geom
     )",
-            parse("(-1.1,2,3,4)").to_sql(d, "_", "9999").clauses
+            parse("(-1.1,2,3,4)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
         _poly_11689077968748950118.geom,
         _.geom
     )",
-            parse("(poly:\"1 2 3 4\")").to_sql(d, "_", "9999").clauses
+            parse("(poly:\"1 2 3 4\")").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(d, "_", "9999").clauses
+            parse("(11111111111111)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
             "id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(d, "_", "9999").clauses
+            parse("(id:1,2,3)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
         _a.geom,
         _.geom
     )",
-            parse("(area.a)").to_sql(d, "_", "9999").clauses
+            parse("(area.a)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
@@ -428,7 +469,7 @@ mod tests {
             ), 9999),
         _.geom
     )",
-            parse("(around.a:12.3)").to_sql(d, "_", "9999").clauses
+            parse("(around.a:12.3)").to_sql(d, "_", "9999").1.clauses
         );
 
         // Combined filters
@@ -441,7 +482,7 @@ mod tests {
         _a.geom,
         _.geom
     )",
-            parse("(poly:\"1 2 3 4\")(area.a)").to_sql(d, "_", "9999").clauses
+            parse("(poly:\"1 2 3 4\")(area.a)").to_sql(d, "_", "9999").1.clauses
         );
     }
 }

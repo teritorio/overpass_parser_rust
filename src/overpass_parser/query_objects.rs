@@ -117,9 +117,13 @@ impl Query for QueryObjects {
             where_clauses.push(selectors_sql);
         }
 
+        let mut pre: Option<SubrequestJoin> = None;
         let mut precomputed = Vec::new();
         if let Some(filters) = &self.filters {
-            let sj = filters.to_sql(sql_dialect, &from, srid);
+            let (pree, sj) = filters.to_sql(sql_dialect, &from, srid);
+            if pree.is_some() {
+                pre = pree;
+            }
             precomputed = sj.precompute.unwrap_or_default();
             if let Some(sj_from) = sj.from {
                 from = format!("{from}\n    {sj_from}");
@@ -129,7 +133,13 @@ impl Query for QueryObjects {
 
         let where_clause = format!("WHERE\n    {}", where_clauses.join(" AND\n    "));
 
-        vec!(SubrequestJoin {
+        let mut ret = Vec::new();
+        if let Some(r) = pre {
+            ret.push(r);
+        }
+        ret.push(
+            SubrequestJoin {
+            precompute_set: None,
             precompute: Some(precomputed),
             from: None,
             clauses: format!(
@@ -139,7 +149,8 @@ FROM
     {from}
 {where_clause}"
             ),
-        })
+        });
+        ret
     }
 }
 
@@ -199,19 +210,23 @@ WHERE
     fn test_matches_poly_to_sql() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(
+        assert_eq!(vec!(
+            "SELECT
+    *
+FROM
+    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS p(geom)",
             "SELECT
     *
 FROM
     _a
-    JOIN VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS _poly_15599741043204530343(geom) ON true
+        JOIN _poly_15599741043204530343 ON true
 WHERE
     osm_type = 'n' AND
     ST_Intersects(
         _poly_15599741043204530343.geom,
         _a.geom
-    )",
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_")[0].clauses
+    )"),
+            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_").iter().map(|i| i.clauses.clone() ).collect::<Vec<String>>()
         );
     }
 }

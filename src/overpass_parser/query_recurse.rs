@@ -65,6 +65,7 @@ impl Query for QueryRecurse {
         };
 
         vec!(SubrequestJoin{
+            precompute_set: None,
             precompute: None,
             from: None,
             clauses: format!("SELECT

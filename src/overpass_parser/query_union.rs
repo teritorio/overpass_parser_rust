@@ -57,6 +57,7 @@ impl Query for QueryUnion {
         srid: &str,
         default_set: &str,
     ) -> Vec<SubrequestJoin> {
+        let mut ret = Vec::new();
         let mut precomputed = Vec::new();
         let mut previous_default_set = default_set.to_string();
         let replace = Regex::new(r"^").unwrap();
@@ -69,33 +70,39 @@ impl Query for QueryUnion {
                 let sjs = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
                 sjs.iter().for_each(|sj| {
                     precomputed.extend(sj.precompute.clone().unwrap_or_default());
-                    let set = match query.asignation() {
+                    let set = match sj.precompute_set.clone().or( query.asignation().map(|a| a.to_string())) {
                         Some(asignation) => asignation.to_string(),
                         None => {
                             previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
                             previous_default_set.clone()
                         }
                     };
-                    clauses.push((set, sj.clauses.clone()));
+                    if sj.precompute_set.is_some() {
+                        ret.push(sj.clone());
+                    } else {
+                        clauses.push((set, sj.clauses.clone()));
+                    }
                 })
             });
 
-        let with = clauses
-            .iter()
-            .map(|(set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "")))
-            .collect::<Vec<String>>()
-            .join(",\n");
+        if !clauses.is_empty() {
+            let with = clauses
+                .iter()
+                .map(|(set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "")))
+                .collect::<Vec<String>>()
+                .join(",\n");
 
-        let asignations = clauses
-            .iter()
-            .map(|(set, _sql)| format!("(SELECT * FROM _{set})"))
-            .collect::<Vec<String>>()
-            .join(" UNION\n    ");
+            let asignations = clauses
+                .iter()
+                .map(|(set, _sql)| format!("(SELECT * FROM _{set})"))
+                .collect::<Vec<String>>()
+                .join(" UNION\n    ");
 
-        vec!(SubrequestJoin {
-            precompute: Some(precomputed),
-            from: None,
-            clauses: format!(
+            ret.push(SubrequestJoin {
+                precompute_set: None,
+                precompute: Some(precomputed),
+                from: None,
+                clauses: format!(
                 "WITH
 {with}
 SELECT DISTINCT ON(osm_type, id)
@@ -106,7 +113,9 @@ FROM (
 ORDER BY
     osm_type, id"
             ),
-        })
+            });
+        }
+        ret
     }
 }
 

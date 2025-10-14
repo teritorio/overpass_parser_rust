@@ -59,6 +59,12 @@ _a AS (
     WHERE
         id = ANY (ARRAY[3600166718])
 ),
+_poly_11689077968748950118 AS (
+    SELECT
+        *
+    FROM
+        VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS p(geom)
+),
 _k AS (
     WITH
     _x AS (
@@ -66,7 +72,7 @@ _k AS (
         *
     FROM
         nwr_by_geom
-        JOIN VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS _poly_11689077968748950118(geom) ON true
+            JOIN _poly_11689077968748950118 ON true
         JOIN _a ON true
     WHERE
         (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
@@ -84,7 +90,7 @@ _k AS (
         *
     FROM
         nwr_by_geom
-        JOIN _a ON true
+            JOIN _a ON true
     WHERE
         tags?'c' AND
         ST_Intersects(
@@ -155,7 +161,7 @@ WHERE
 SELECT
     *
 FROM
-    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS geom(geom)
+    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 'EPSG:4326', 'EPSG:9999'))) AS p(geom)
 ;", "SET variable _poly_17221393697116889690_bbox = (
     SELECT
         STRUCT_PACK(
@@ -166,7 +172,7 @@ FROM
             geom := ST_Union_Agg(geom)
         ) AS bbox_geom
     FROM
-        _a
+        _poly_17221393697116889690
 )
 ;", "WITH
 _k AS (
