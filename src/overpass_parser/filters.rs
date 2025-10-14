@@ -153,7 +153,8 @@ impl Filter {
             .map(|&(lat, lon)| format!("{lon} {lat}"))
             .collect::<Vec<String>>()
             .join(", ");
-        let poly = &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON(({coords}))'::geometry"), srid);
+        let poly =
+            &sql_dialect.st_transform(&format!("'SRID=4326;POLYGON(({coords}))'::geometry"), srid);
 
         let mut hasher = DefaultHasher::new();
         poly.hash(&mut hasher);
@@ -164,7 +165,8 @@ impl Filter {
                 precompute_set: Some(poly_id.to_string()),
                 precompute: None,
                 from: None,
-                clauses: format!("SELECT
+                clauses: format!(
+                    "SELECT
     geom,
     STRUCT_PACK(
         xmin := ST_XMin(geom),
@@ -173,17 +175,22 @@ impl Filter {
         ymax := ST_YMax(geom)
     ) AS bbox
 FROM
-    VALUES(({poly})) AS p(geom)").to_string(),
+    VALUES(({poly})) AS p(geom)"
+                )
+                .to_string(),
             },
             SubrequestJoin {
                 precompute_set: None,
                 precompute: sql_dialect
                     .is_precompute()
                     .then(|| vec![poly_id.to_string()]),
-                from: (!sql_dialect.is_precompute()).then(|| format!("    JOIN _{poly_id} ON true")),
-                clauses: sql_dialect
-                    .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(poly_id.as_str()).as_str()),
-            }
+                from: (!sql_dialect.is_precompute())
+                    .then(|| format!("    JOIN _{poly_id} ON true")),
+                clauses: sql_dialect.st_intersects_with_geom(
+                    set,
+                    sql_dialect.table_precompute_geom(poly_id.as_str()).as_str(),
+                ),
+            },
         )
     }
 
@@ -255,7 +262,7 @@ FROM
         set: &str,
         srid: &str,
     ) -> (Option<SubrequestJoin>, SubrequestJoin) {
-        let mut pre : Option<SubrequestJoin > = None;
+        let mut pre: Option<SubrequestJoin> = None;
         let mut clauses = Vec::new();
 
         if let Some(bbox) = self.bbox {
@@ -313,7 +320,7 @@ FROM
                 precompute: Some(precompute),
                 from: (!from.is_empty()).then(|| from.join("\n")),
                 clauses: clauses_join,
-            }
+            },
         )
     }
 }
@@ -342,7 +349,7 @@ impl Filters {
         set: &str,
         srid: &str,
     ) -> (Option<SubrequestJoin>, SubrequestJoin) {
-        let mut pre : Option<SubrequestJoin> = None;
+        let mut pre: Option<SubrequestJoin> = None;
         let s = self
             .filters
             .iter()
@@ -377,7 +384,7 @@ impl Filters {
                 ),
                 from: (!from.is_empty()).then_some(from),
                 clauses,
-            }
+            },
         )
     }
 }
@@ -398,11 +405,9 @@ mod tests {
         match parse_query(format!("node{query};").as_str()) {
             Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
                 SubrequestType::QueryType(query_type) => match query_type {
-                    QueryType::QueryObjects(query_objets) => query_objets
-                        .filters
-                        .as_ref()
-                        .unwrap()
-                        .clone(),
+                    QueryType::QueryObjects(query_objets) => {
+                        query_objets.filters.as_ref().unwrap().clone()
+                    }
                     _ => panic!(
                         "Expected a QueryObjects, got {:?}",
                         parsed.subrequest.queries[0]
@@ -482,7 +487,10 @@ mod tests {
         _a.geom,
         _.geom
     )",
-            parse("(poly:\"1 2 3 4\")(area.a)").to_sql(d, "_", "9999").1.clauses
+            parse("(poly:\"1 2 3 4\")(area.a)")
+                .to_sql(d, "_", "9999")
+                .1
+                .clauses
         );
     }
 }

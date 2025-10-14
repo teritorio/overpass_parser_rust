@@ -63,27 +63,28 @@ impl Query for QueryUnion {
         let replace = Regex::new(r"^").unwrap();
 
         let mut clauses = Vec::new();
-        self
-            .queries
-            .iter()
-            .for_each(|query| {
-                let sjs = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
-                sjs.iter().for_each(|sj| {
-                    precomputed.extend(sj.precompute.clone().unwrap_or_default());
-                    let set = match sj.precompute_set.clone().or( query.asignation().map(|a| a.to_string())) {
-                        Some(asignation) => asignation.to_string(),
-                        None => {
-                            previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
-                            previous_default_set.clone()
-                        }
-                    };
-                    if sj.precompute_set.is_some() {
-                        ret.push(sj.clone());
-                    } else {
-                        clauses.push((set, sj.clauses.clone()));
+        self.queries.iter().for_each(|query| {
+            let sjs = query.to_sql(sql_dialect, srid, previous_default_set.as_str());
+            sjs.iter().for_each(|sj| {
+                precomputed.extend(sj.precompute.clone().unwrap_or_default());
+                let set = match sj
+                    .precompute_set
+                    .clone()
+                    .or(query.asignation().map(|a| a.to_string()))
+                {
+                    Some(asignation) => asignation.to_string(),
+                    None => {
+                        previous_default_set = COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
+                        previous_default_set.clone()
                     }
-                })
-            });
+                };
+                if sj.precompute_set.is_some() {
+                    ret.push(sj.clone());
+                } else {
+                    clauses.push((set, sj.clauses.clone()));
+                }
+            })
+        });
 
         if !clauses.is_empty() {
             let with = clauses
@@ -103,7 +104,7 @@ impl Query for QueryUnion {
                 precompute: Some(precomputed),
                 from: None,
                 clauses: format!(
-                "WITH
+                    "WITH
 {with}
 SELECT DISTINCT ON(osm_type, id)
     *
@@ -112,7 +113,7 @@ FROM (
 ) AS t
 ORDER BY
     osm_type, id"
-            ),
+                ),
             });
         }
         ret

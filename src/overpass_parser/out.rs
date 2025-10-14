@@ -97,7 +97,9 @@ impl Out {
     'bounds', CASE osm_type = 'w' OR osm_type = 'r'
     WHEN true THEN {}
     END",
-                sql_dialect.json_build_bbox("geom", srid).replace("\n", "\n    ")
+                sql_dialect
+                    .json_build_bbox("geom", srid)
+                    .replace("\n", "\n    ")
             )
         } else {
             "".to_string()

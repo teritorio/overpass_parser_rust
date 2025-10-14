@@ -137,7 +137,11 @@ impl Subrequest {
                 let sjs = query_type.to_sql(sql_dialect, srid, previous_default_set.as_str());
                 sjs.iter().for_each(|sj| {
                     precomputed.extend(sj.precompute.clone().unwrap_or_default());
-                    let set: String = match sj.precompute_set.clone().or( query_type.asignation().map(|a| a.to_string())) {
+                    let set: String = match sj
+                        .precompute_set
+                        .clone()
+                        .or(query_type.asignation().map(|a| a.to_string()))
+                    {
                         Some(asignation) => asignation.to_string(),
                         None => {
                             previous_default_set =

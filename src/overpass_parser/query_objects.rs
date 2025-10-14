@@ -137,8 +137,7 @@ impl Query for QueryObjects {
         if let Some(r) = pre {
             ret.push(r);
         }
-        ret.push(
-            SubrequestJoin {
+        ret.push(SubrequestJoin {
             precompute_set: None,
             precompute: Some(precomputed),
             from: None,
@@ -210,12 +209,13 @@ WHERE
     fn test_matches_poly_to_sql() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(vec!(
-            "SELECT
+        assert_eq!(
+            vec!(
+                "SELECT
     *
 FROM
     VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS p(geom)",
-            "SELECT
+                "SELECT
     *
 FROM
     _a
@@ -225,8 +225,13 @@ WHERE
     ST_Intersects(
         _poly_15599741043204530343.geom,
         _a.geom
-    )"),
-            parse("node.a(poly:'1 2 3 4 5 6')").to_sql(d, "9999", "_").iter().map(|i| i.clauses.clone() ).collect::<Vec<String>>()
+    )"
+            ),
+            parse("node.a(poly:'1 2 3 4 5 6')")
+                .to_sql(d, "9999", "_")
+                .iter()
+                .map(|i| i.clauses.clone())
+                .collect::<Vec<String>>()
         );
     }
 }
