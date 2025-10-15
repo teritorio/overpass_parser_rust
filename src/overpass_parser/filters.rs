@@ -167,15 +167,10 @@ impl Filter {
                 from: None,
                 clauses: format!(
                     "SELECT
-    geom,
-    STRUCT_PACK(
-        xmin := ST_XMin(geom),
-        ymin := ST_YMin(geom),
-        xmax := ST_XMax(geom),
-        ymax := ST_YMax(geom)
-    ) AS bbox
+    {}
 FROM
-    VALUES(({poly})) AS p(geom)"
+    VALUES(({poly})) AS p(geom)",
+                sql_dialect.make_geom_fields()
                 )
                 .to_string(),
             },

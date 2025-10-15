@@ -61,7 +61,7 @@ _a AS (
 ),
 _poly_11689077968748950118 AS (
     SELECT
-        *
+        geom
     FROM
         VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS p(geom)
 ),
@@ -159,7 +159,13 @@ WHERE
 )
 ;", "CREATE TEMP TABLE _poly_17221393697116889690 AS
 SELECT
-    *
+    geom,
+    STRUCT_PACK(
+        xmin := ST_XMin(geom),
+        ymin := ST_YMin(geom),
+        xmax := ST_XMax(geom),
+        ymax := ST_YMax(geom)
+    ) AS bbox
 FROM
     VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 'EPSG:4326', 'EPSG:9999'))) AS p(geom)
 ;", "SET variable _poly_17221393697116889690_bbox = (

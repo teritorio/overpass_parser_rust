@@ -23,6 +23,10 @@ pub mod postgres {
             Some(format!("SET statement_timeout = {timeout};"))
         }
 
+        fn make_geom_fields(&self) -> String {
+            "geom".to_string()
+        }
+
         fn is_precompute(&self) -> bool {
             false
         }

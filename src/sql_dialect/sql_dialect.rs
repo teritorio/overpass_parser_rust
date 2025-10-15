@@ -5,6 +5,8 @@ pub trait SqlDialect: Send + Sync {
 
     fn statement_timeout(&self, timeout: u32) -> Option<String>;
 
+    fn make_geom_fields(&self)  -> String;
+
     fn is_precompute(&self) -> bool;
 
     fn precompute(&self, set: &str, sql: &str) -> Option<Vec<String>>;

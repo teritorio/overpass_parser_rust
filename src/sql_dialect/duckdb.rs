@@ -16,6 +16,16 @@ pub mod duckdb {
             None
         }
 
+        fn make_geom_fields(&self)  -> String {
+            "geom,
+    STRUCT_PACK(
+        xmin := ST_XMin(geom),
+        ymin := ST_YMin(geom),
+        xmax := ST_XMax(geom),
+        ymax := ST_YMax(geom)
+    ) AS bbox".to_string()
+        }
+
         fn is_precompute(&self) -> bool {
             true
         }
