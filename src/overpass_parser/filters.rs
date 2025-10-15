@@ -169,7 +169,7 @@ impl Filter {
                     "SELECT
     {}
 FROM
-    VALUES(({poly})) AS p(geom)",
+    (VALUES ({poly})) AS p(geom)",
                 sql_dialect.make_geom_fields()
                 )
                 .to_string(),

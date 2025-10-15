@@ -63,7 +63,7 @@ _poly_11689077968748950118 AS (
     SELECT
         geom
     FROM
-        VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS p(geom)
+        (VALUES (ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS p(geom)
 ),
 _k AS (
     WITH
@@ -167,7 +167,7 @@ SELECT
         ymax := ST_YMax(geom)
     ) AS bbox
 FROM
-    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 'EPSG:4326', 'EPSG:9999'))) AS p(geom)
+    (VALUES (ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 'EPSG:4326', 'EPSG:9999'))) AS p(geom)
 ;", "SET variable _poly_17221393697116889690_bbox = (
     SELECT
         STRUCT_PACK(

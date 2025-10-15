@@ -215,7 +215,7 @@ WHERE
                 "SELECT
     geom
 FROM
-    VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS p(geom)",
+    (VALUES (ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS p(geom)",
                 "SELECT
     _a.*
 FROM
