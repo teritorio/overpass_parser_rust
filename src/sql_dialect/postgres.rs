@@ -46,12 +46,12 @@ pub mod postgres {
             )
         }
 
-        fn hash_exists(&self, key: &str) -> String {
-            format!("tags?{}", self.escape_literal(key))
+        fn hash_exists(&self, table: &str, key: &str) -> String {
+            format!("{table}.tags?{}", self.escape_literal(key))
         }
 
-        fn hash_get(&self, key: &str) -> String {
-            format!("tags->>{}", self.escape_literal(key))
+        fn hash_get(&self, table: &str, key: &str) -> String {
+            format!("{table}.tags->>{}", self.escape_literal(key))
         }
 
         fn json_strip_nulls(&self) -> String {

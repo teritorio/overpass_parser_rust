@@ -13,9 +13,9 @@ pub trait SqlDialect: Send + Sync {
 
     fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String;
 
-    fn hash_exists(&self, key: &str) -> String;
+    fn hash_exists(&self, table: &str, key: &str) -> String;
 
-    fn hash_get(&self, key: &str) -> String;
+    fn hash_get(&self, table: &str, key: &str) -> String;
 
     fn json_strip_nulls(&self) -> String;
 

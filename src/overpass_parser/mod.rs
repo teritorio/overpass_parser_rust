@@ -75,7 +75,7 @@ _k AS (
             JOIN _poly_11689077968748950118 ON true
         JOIN _a ON true
     WHERE
-        (tags?'a' AND tags->>'a' = 'Ñ''') AND (tags?'b' AND tags->>'b' = '\"') AND
+        (nwr_by_geom.tags?'a' AND nwr_by_geom.tags->>'a' = 'Ñ''') AND (nwr_by_geom.tags?'b' AND nwr_by_geom.tags->>'b' = '\"') AND
         ST_Intersects(
             _poly_11689077968748950118.geom,
             nwr_by_geom.geom
@@ -92,7 +92,7 @@ _k AS (
         nwr_by_geom
             JOIN _a ON true
     WHERE
-        tags?'c' AND
+        nwr_by_geom.tags?'c' AND
         ST_Intersects(
             _a.geom,
             nwr_by_geom.geom
@@ -189,7 +189,7 @@ _k AS (
     FROM
         nwr_by_geom
     WHERE
-        ((tags->>'a') IS NOT NULL AND (tags->>'a') = 'Ñ''') AND ((tags->>'b') IS NOT NULL AND (tags->>'b') = '\"') AND
+        ((nwr_by_geom.tags->>'a') IS NOT NULL AND (nwr_by_geom.tags->>'a') = 'Ñ''') AND ((nwr_by_geom.tags->>'b') IS NOT NULL AND (nwr_by_geom.tags->>'b') = '\"') AND
         nwr_by_geom.bbox.xmin <= getvariable('_poly_17221393697116889690_bbox').xmax AND
         nwr_by_geom.bbox.xmax >= getvariable('_poly_17221393697116889690_bbox').xmin AND
         nwr_by_geom.bbox.ymin <= getvariable('_poly_17221393697116889690_bbox').ymax AND
@@ -213,7 +213,7 @@ _k AS (
     FROM
         nwr_by_geom
     WHERE
-        (tags->>'c') IS NOT NULL AND
+        (nwr_by_geom.tags->>'c') IS NOT NULL AND
         nwr_by_geom.bbox.xmin <= getvariable('_a_bbox').xmax AND
         nwr_by_geom.bbox.xmax >= getvariable('_a_bbox').xmin AND
         nwr_by_geom.bbox.ymin <= getvariable('_a_bbox').ymax AND

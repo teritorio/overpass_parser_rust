@@ -105,8 +105,8 @@ impl Selector {
         if m { Some(vec![&self.key]) } else { None }
     }
 
-    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), _srid: &str) -> String {
-        let key = sql_dialect.hash_exists(&self.key);
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), table: &str, _srid: &str) -> String {
+        let key = sql_dialect.hash_exists(table, &self.key);
         if self.operator.is_none() {
             if self.not { format!("NOT {key}") } else { key }
         } else {
@@ -126,7 +126,7 @@ impl Selector {
                         format!(
                             "({} AND {} = {})",
                             key,
-                            sql_dialect.hash_get(&self.key),
+                            sql_dialect.hash_get(table, &self.key),
                             value
                         )
                     }
@@ -135,7 +135,7 @@ impl Selector {
                     format!(
                         "(NOT {} OR {} != {})",
                         key,
-                        sql_dialect.hash_get(&self.key),
+                        sql_dialect.hash_get(table, &self.key),
                         value
                     )
                 }
@@ -143,7 +143,7 @@ impl Selector {
                     format!(
                         "({} AND {} ~ {})",
                         key,
-                        sql_dialect.hash_get(&self.key),
+                        sql_dialect.hash_get(table, &self.key),
                         value
                     )
                 }
@@ -151,7 +151,7 @@ impl Selector {
                     format!(
                         "(NOT {} OR {} !~ {})",
                         key,
-                        sql_dialect.hash_get(&self.key),
+                        sql_dialect.hash_get(table, &self.key),
                         value
                     )
                 }
@@ -238,10 +238,10 @@ impl Selectors {
         }
     }
 
-    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> String {
+    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), table: &str, srid: &str) -> String {
         self.selectors
             .iter()
-            .map(|selector| selector.to_sql(sql_dialect, srid))
+            .map(|selector| selector.to_sql(sql_dialect, table, srid))
             .collect::<Vec<String>>()
             .join(" AND ")
     }
@@ -371,36 +371,36 @@ mod tests {
     fn test_matches_to_sql() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(parse("[\"amenity\"]").to_sql(d, "9999"), "tags?'amenity'");
-        assert_eq!(parse("['amenity']").to_sql(d, "9999"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "_", "9999"), "_.tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "_", "9999"), "_.tags?'amenity'");
         assert_eq!(
-            parse("[shop=florist]").to_sql(d, "9999"),
-            "(tags?'shop' AND tags->>'shop' = 'florist')"
+            parse("[shop=florist]").to_sql(d, "_", "9999"),
+            "(_.tags?'shop' AND _.tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse("[shop=\"florist\"]").to_sql(d, "9999"),
-            "(tags?'shop' AND tags->>'shop' = 'florist')"
+            parse("[shop=\"florist\"]").to_sql(d, "_", "9999"),
+            "(_.tags?'shop' AND _.tags->>'shop' = 'florist')"
         );
         assert_eq!(
-            parse(r#"[shop~"pizza.*"]"#).to_sql(d, "9999"),
-            "(tags?'shop' AND tags->>'shop' ~ 'pizza.*')"
+            parse(r#"[shop~"pizza.*"]"#).to_sql(d, "_", "9999"),
+            "(_.tags?'shop' AND _.tags->>'shop' ~ 'pizza.*')"
         );
         assert_eq!(
-            parse("[highway=footway][footway=traffic_island]").to_sql(d, "9999"),
-            "(tags?'highway' AND tags->>'highway' = 'footway') AND (tags?'footway' AND tags->>'footway' = 'traffic_island')"
+            parse("[highway=footway][footway=traffic_island]").to_sql(d, "_", "9999"),
+            "(_.tags?'highway' AND _.tags->>'highway' = 'footway') AND (_.tags?'footway' AND _.tags->>'footway' = 'traffic_island')"
         );
-        assert_eq!(parse("[!amenity]").to_sql(d, "9999"), "NOT tags?'amenity'");
+        assert_eq!(parse("[!amenity]").to_sql(d, "_", "9999"), "NOT _.tags?'amenity'");
     }
 
     #[test]
     fn test_matches_to_sql_duckdb() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
 
-        assert_eq!(parse("[\"amenity\"]").to_sql(d, "9999"), "tags?'amenity'");
-        assert_eq!(parse("['amenity']").to_sql(d, "9999"), "tags?'amenity'");
+        assert_eq!(parse("[\"amenity\"]").to_sql(d, "_", "9999"), "_.tags?'amenity'");
+        assert_eq!(parse("['amenity']").to_sql(d, "_", "9999"), "_.tags?'amenity'");
         assert_eq!(
-            parse("[shop=florist]").to_sql(d, "9999"),
-            "(tags?'shop' AND tags->>'shop' = 'florist')"
+            parse("[shop=florist]").to_sql(d, "_", "9999"),
+            "(_.tags?'shop' AND _.tags->>'shop' = 'florist')"
         );
     }
 
@@ -408,21 +408,21 @@ mod tests {
     fn test_matches_to_sql_quote() {
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(d, "9999"),
-            "(tags?'name' AND tags->>'name' = 'l''l')"
+            parse(r#"[name="l'l"]"#).to_sql(d, "_", "9999"),
+            "(_.tags?'name' AND _.tags->>'name' = 'l''l')"
         );
         let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name~"l'l"]"#).to_sql(d, "9999"),
-            "(tags?'name' AND tags->>'name' ~ 'l''l')"
+            parse(r#"[name~"l'l"]"#).to_sql(d, "_", "9999"),
+            "(_.tags?'name' AND _.tags->>'name' ~ 'l''l')"
         );
 
         let d = &Postgres {
             postgres_escape_literal: Some(Box::new(|s| format!("_{s}_"))),
         } as &(dyn SqlDialect + Send + Sync);
         assert_eq!(
-            parse(r#"[name="l'l"]"#).to_sql(d, "9999"),
-            "(tags?_name_ AND tags->>_name_ = _l'l_)"
+            parse(r#"[name="l'l"]"#).to_sql(d, "_", "9999"),
+            "(_.tags?_name_ AND _.tags->>_name_ = _l'l_)"
         );
     }
 
@@ -432,8 +432,8 @@ mod tests {
     //     assert_eq!(
     //         parse(r#"[power!~"no|cable|line|minor_line$"][power]"#)
     //             .sort()
-    //             .to_sql(&d, 9999),
-    //         "tags?'power' AND (NOT tags?'power' OR tags->>'power' !~ '(no|cable|line|minor_line$)')"
+    //             .to_sql(&d, "_", 9999),
+    //         "_.tags?'power' AND (NOT _.tags?'power' OR _.tags->>'power' !~ '(no|cable|line|minor_line$)')"
     //     );
     // }
 }

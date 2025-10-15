@@ -111,7 +111,7 @@ impl Query for QueryObjects {
                 .selectors
                 .selectors
                 .iter()
-                .map(|selector| selector.to_sql(sql_dialect, srid))
+                .map(|selector| selector.to_sql(sql_dialect, from_table.as_str(), srid))
                 .collect::<Vec<String>>()
                 .join(" AND ");
             where_clauses.push(selectors_sql);
@@ -197,7 +197,7 @@ FROM
     _a
 WHERE
     osm_type = 'n' AND
-    (tags?'a' AND tags->>'a' = 'b') AND
+    (_a.tags?'a' AND _a.tags->>'a' = 'b') AND
     ST_Intersects(
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 9999),
         _a.geom
