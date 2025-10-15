@@ -53,7 +53,7 @@ mod tests {
 "WITH
 _a AS (
     SELECT
-        *
+        area_by_id.*
     FROM
         area_by_id
     WHERE
@@ -69,7 +69,7 @@ _k AS (
     WITH
     _x AS (
     SELECT
-        *
+        nwr_by_geom.*
     FROM
         nwr_by_geom
             JOIN _poly_11689077968748950118 ON true
@@ -87,7 +87,7 @@ _k AS (
     ),
     _z AS (
     SELECT
-        *
+        nwr_by_geom.*
     FROM
         nwr_by_geom
             JOIN _a ON true
@@ -140,7 +140,7 @@ sql);
         let sql = request.to_sql(d, "9999", None);
         assert_eq!(vec!["CREATE TEMP TABLE _a AS
 SELECT
-    *
+    area_by_id.*
 FROM
     area_by_id
 WHERE
@@ -185,7 +185,7 @@ _k AS (
     WITH
     _x AS (
     SELECT
-        *
+        nwr_by_geom.*
     FROM
         nwr_by_geom
     WHERE
@@ -209,7 +209,7 @@ _k AS (
     ),
     _z AS (
     SELECT
-        *
+        nwr_by_geom.*
     FROM
         nwr_by_geom
     WHERE

@@ -82,7 +82,7 @@ impl Query for QueryObjects {
         default_set: &str,
     ) -> Vec<SubrequestJoin> {
         let p: String;
-        let mut from: String = if self.set.is_none() {
+        let from_table: String = if self.set.is_none() {
             let from: String = self.object_type.clone().into();
             if self.filters.is_some() && self.filters.as_ref().unwrap().has_ids() {
                 format!("{from}_by_id")
@@ -119,6 +119,7 @@ impl Query for QueryObjects {
 
         let mut pre: Option<SubrequestJoin> = None;
         let mut precomputed = Vec::new();
+        let mut from = from_table.clone();
         if let Some(filters) = &self.filters {
             let (pree, sj) = filters.to_sql(sql_dialect, &from, srid);
             if pree.is_some() {
@@ -143,7 +144,7 @@ impl Query for QueryObjects {
             from: None,
             clauses: format!(
                 "SELECT
-    *
+    {from_table}.*
 FROM
     {from}
 {where_clause}"
@@ -191,7 +192,7 @@ mod tests {
 
         assert_eq!(
             "SELECT
-    *
+    _a.*
 FROM
     _a
 WHERE
@@ -216,7 +217,7 @@ WHERE
 FROM
     VALUES((ST_Transform('SRID=4326;POLYGON((2 1, 4 3, 6 5))'::geometry, 9999))) AS p(geom)",
                 "SELECT
-    *
+    _a.*
 FROM
     _a
         JOIN _poly_15599741043204530343 ON true

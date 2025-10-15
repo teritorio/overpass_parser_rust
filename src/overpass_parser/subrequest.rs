@@ -241,7 +241,7 @@ mod tests {
                 "WITH
 _a AS (
     SELECT
-        *
+        node_by_id.*
     FROM
         node_by_id
     WHERE

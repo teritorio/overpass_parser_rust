@@ -156,7 +156,7 @@ mod tests {
             "WITH
 _a AS (
 SELECT
-    *
+    node_by_geom.*
 FROM
     node_by_geom
 WHERE
@@ -164,7 +164,7 @@ WHERE
 ),
 _b AS (
 SELECT
-    *
+    way_by_geom.*
 FROM
     way_by_geom
 WHERE

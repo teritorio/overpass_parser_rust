@@ -190,7 +190,7 @@ mod tests {
                 assert_eq!(vec!["SET statement_timeout = 25000;", "WITH
 _a AS (
     SELECT
-        *
+        node_by_id.*
     FROM
         node_by_id
     WHERE
@@ -223,7 +223,7 @@ _out_a AS (
 ),
 _b AS (
     SELECT
-        *
+        node_by_id.*
     FROM
         node_by_id
     WHERE
