@@ -84,7 +84,7 @@ FROM
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
     ) AS members ON
-        type = 'w'
+        members.type = 'w'
     JOIN node_by_id AS node ON
         node.id = members.ref
 WHERE
@@ -156,7 +156,7 @@ FROM
     JOIN LATERAL (
         SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
     ) AS members ON
-        type = 'w'
+        members.type = 'w'
     JOIN node_by_id AS node ON
         node.id = members.ref
 WHERE

@@ -245,8 +245,8 @@ _a AS (
     FROM
         node_by_id
     WHERE
-        osm_type = 'n' AND
-        id = ANY (ARRAY[1])
+        node_by_id.osm_type = 'n' AND
+        node_by_id.id = ANY (ARRAY[1])
 ),
 _b AS (
     SELECT
@@ -265,7 +265,7 @@ _b AS (
         JOIN LATERAL (
             SELECT * FROM jsonb_to_recordset(members) AS t(ref bigint, role text, type text) WHERE type = 'n'
         ) AS members ON
-            type = 'w'
+            members.type = 'w'
         JOIN node_by_id AS node ON
             node.id = members.ref
     WHERE

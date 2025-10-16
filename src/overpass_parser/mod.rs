@@ -57,7 +57,7 @@ _a AS (
     FROM
         area_by_id
     WHERE
-        id = ANY (ARRAY[3600166718])
+        area_by_id.id = ANY (ARRAY[3600166718])
 ),
 _poly_11689077968748950118 AS (
     SELECT
@@ -144,7 +144,7 @@ SELECT
 FROM
     area_by_id
 WHERE
-    (id = 3600166718)
+    (area_by_id.id = 3600166718)
 ;", "SET variable _a_bbox = (
     SELECT
         STRUCT_PACK(

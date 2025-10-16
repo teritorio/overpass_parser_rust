@@ -101,7 +101,7 @@ impl Query for QueryObjects {
         if self.object_type.as_ref() == "nwr" {
         } else if self.object_type.as_ref() != "area" {
             where_clauses.push(format!(
-                "osm_type = '{}'",
+                "{from_table}.osm_type = '{}'",
                 self.object_type.chars().next().unwrap()
             ));
         }
@@ -196,7 +196,7 @@ mod tests {
 FROM
     _a
 WHERE
-    osm_type = 'n' AND
+    _a.osm_type = 'n' AND
     (_a.tags?'a' AND _a.tags->>'a' = 'b') AND
     ST_Intersects(
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 1, 4 3)'::geometry), 9999),
@@ -222,7 +222,7 @@ FROM
     _a
         JOIN _poly_15599741043204530343 ON true
 WHERE
-    osm_type = 'n' AND
+    _a.osm_type = 'n' AND
     ST_Intersects(
         _poly_15599741043204530343.geom,
         _a.geom

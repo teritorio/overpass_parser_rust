@@ -51,10 +51,10 @@ pub mod duckdb {
             ])
         }
 
-        fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
+        fn id_in_list(&self, table: &str, field: &str, values: &Vec<i64>) -> String {
             let sql = values
                 .iter()
-                .map(|value| format!("{field} = {value}"))
+                .map(|value| format!("{table}.{field} = {value}"))
                 .collect::<Vec<String>>()
                 .join(" OR ");
             format!("({sql})")

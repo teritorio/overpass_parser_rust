@@ -194,8 +194,8 @@ _a AS (
     FROM
         node_by_id
     WHERE
-        osm_type = 'n' AND
-        id = ANY (ARRAY[1573900912])
+        node_by_id.osm_type = 'n' AND
+        node_by_id.id = ANY (ARRAY[1573900912])
 ),
 _out_a AS (
     SELECT
@@ -227,8 +227,8 @@ _b AS (
     FROM
         node_by_id
     WHERE
-        osm_type = 'n' AND
-        id = ANY (ARRAY[1573900912])
+        node_by_id.osm_type = 'n' AND
+        node_by_id.id = ANY (ARRAY[1573900912])
 ),
 _out_b AS (
     SELECT

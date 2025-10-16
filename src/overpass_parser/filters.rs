@@ -278,7 +278,7 @@ FROM
                 precompute_set: None,
                 precompute: None,
                 from: None,
-                clauses: sql_dialect.id_in_list("id", ids),
+                clauses: sql_dialect.id_in_list(set, "id", ids),
             })
         }
         if let Some(area_id) = &self.area_id {
@@ -436,11 +436,11 @@ mod tests {
             parse("(poly:\"1 2 3 4\")").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
-            "id = ANY (ARRAY[11111111111111])",
+            "_.id = ANY (ARRAY[11111111111111])",
             parse("(11111111111111)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(
-            "id = ANY (ARRAY[1, 2, 3])",
+            "_.id = ANY (ARRAY[1, 2, 3])",
             parse("(id:1,2,3)").to_sql(d, "_", "9999").1.clauses
         );
         assert_eq!(

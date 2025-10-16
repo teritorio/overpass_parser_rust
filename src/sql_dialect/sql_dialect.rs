@@ -11,7 +11,7 @@ pub trait SqlDialect: Send + Sync {
 
     fn precompute(&self, set: &str, sql: &str) -> Option<Vec<String>>;
 
-    fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String;
+    fn id_in_list(&self, table: &str, field: &str, values: &Vec<i64>) -> String;
 
     fn hash_exists(&self, table: &str, key: &str) -> String;
 

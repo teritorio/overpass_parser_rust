@@ -160,7 +160,7 @@ SELECT
 FROM
     node_by_geom
 WHERE
-    osm_type = 'n'
+    node_by_geom.osm_type = 'n'
 ),
 _b AS (
 SELECT
@@ -168,7 +168,7 @@ SELECT
 FROM
     way_by_geom
 WHERE
-    osm_type = 'w'
+    way_by_geom.osm_type = 'w'
 )
 SELECT DISTINCT ON(osm_type, id)
     *

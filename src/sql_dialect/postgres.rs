@@ -35,9 +35,9 @@ pub mod postgres {
             None
         }
 
-        fn id_in_list(&self, field: &str, values: &Vec<i64>) -> String {
+        fn id_in_list(&self, table: &str, field: &str, values: &Vec<i64>) -> String {
             format!(
-                "{field} = ANY (ARRAY[{}])",
+                "{table}.{field} = ANY (ARRAY[{}])",
                 values
                     .iter()
                     .map(|value| value.to_string())
