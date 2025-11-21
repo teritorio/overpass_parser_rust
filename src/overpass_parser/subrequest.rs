@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{collections::HashSet, sync::atomic::{AtomicU64, Ordering}};
 
 use crate::overpass_parser::out::Out;
 use pest::iterators::Pair;
@@ -182,9 +182,18 @@ impl Subrequest {
             .map(|(is_out, set, sql)| (*is_out, set.clone(), sql.clone()))
             .collect::<Vec<(bool, String, String)>>();
 
+       let mut declared_sets: HashSet<String> = HashSet::new();
         let with_join = clauses
             .iter()
-            .map(|(_, set, sql)| format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
+            .filter_map(|(_, set, sql)| {
+                let already_declared = declared_sets.contains(set);
+                declared_sets.insert(set.clone());
+                if !already_declared {
+                    Some(format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
+                } else {
+                    Option::None
+                }
+            })
             .collect::<Vec<String>>()
             .join(",\n");
         let select = clauses
@@ -283,6 +292,60 @@ _b AS (
             way.id = members.ref
     WHERE
         relation.osm_type = 'r'
+)
+
+;"], sql);
+            }
+            Err(e) => {
+                println!("Error parsing query: {e}");
+                panic!("Parsing fails");
+            }
+        };
+    }
+
+    #[test]
+    fn test_dedeplucate_poly() {
+        let query = "
+            node(poly:\"1 2 3 4\")->.n;
+            way(poly:\"1 2 3 4\")->.w;
+        ";
+        match parse_query(query) {
+            Ok(request) => {
+                let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
+                let sql = request.to_sql(d, "9999", None);
+                assert_eq!(vec!["SET statement_timeout = 160000;",
+                "WITH
+_poly_11689077968748950118 AS (
+    SELECT
+        geom
+    FROM
+        (VALUES (ST_Transform('SRID=4326;POLYGON((2 1, 4 3))'::geometry, 9999))) AS p(geom)
+),
+_n AS (
+    SELECT
+        node_by_geom.*
+    FROM
+        node_by_geom
+            JOIN _poly_11689077968748950118 ON true
+    WHERE
+        node_by_geom.osm_type = 'n' AND
+        ST_Intersects(
+            _poly_11689077968748950118.geom,
+            node_by_geom.geom
+        )
+),
+_w AS (
+    SELECT
+        way_by_geom.*
+    FROM
+        way_by_geom
+            JOIN _poly_11689077968748950118 ON true
+    WHERE
+        way_by_geom.osm_type = 'w' AND
+        ST_Intersects(
+            _poly_11689077968748950118.geom,
+            way_by_geom.geom
+        )
 )
 
 ;"], sql);
