@@ -1,4 +1,4 @@
-Create based Rust reimplementation from Ruby (antlr-gemerator)[https://github.com/teritorio/overpass_parser-rb].
+Create based Rust reimplementation from Ruby [antlr-gemerator](https://github.com/teritorio/overpass_parser-rb).
 
 ## Use
 
