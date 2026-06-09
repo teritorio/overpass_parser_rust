@@ -132,8 +132,8 @@ _out_k AS (
         _k
 )
 SELECT * FROM _out_k
-;"],
-sql);
+;"].join("\n"),
+sql.join("\n"));
 
         let d = &Duckdb as &(dyn SqlDialect + Send + Sync);
 
@@ -257,7 +257,7 @@ _out_k AS (
         _k
 )
 SELECT * FROM _out_k
-;"],
-sql);
+;"].join("\n"),
+sql.join("\n"));
     }
 }
