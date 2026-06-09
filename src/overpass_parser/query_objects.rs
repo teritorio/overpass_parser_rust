@@ -83,7 +83,10 @@ impl Query for QueryObjects {
     ) -> Vec<SubrequestJoin> {
         let p: String;
         let from_table: String = if self.set.is_none() {
-            let from: String = self.object_type.clone().into();
+            let mut from: String = self.object_type.clone().into();
+            if from == "rel" {
+                from = "relation".to_string();
+            }
             if self.filters.is_some() && self.filters.as_ref().unwrap().has_ids() {
                 format!("{from}_by_id")
             } else {

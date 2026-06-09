@@ -1,6 +1,7 @@
 pub mod filters;
 pub mod out;
 pub mod query;
+pub mod query_foreach;
 pub mod query_objects;
 pub mod query_recurse;
 pub mod query_union;

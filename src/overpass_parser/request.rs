@@ -51,7 +51,7 @@ impl Request {
         srid: &str,
         _finalizer: Option<&str>,
     ) -> Vec<String> {
-        let mut select = self.subrequest.to_sql(sql_dialect, srid);
+        let mut select = self.subrequest.to_sql(sql_dialect, srid, "_");
         let timeout = sql_dialect.statement_timeout(self.timeout.unwrap_or(180).min(500) * 1000);
         if let Some(t) = timeout {
             select.insert(0, t);

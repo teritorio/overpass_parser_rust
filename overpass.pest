@@ -43,7 +43,8 @@ object_type = { "node" | "way" | "relation" | "rel" | "area" | "nwr" }
 query_object = { object_type ~ DOT_ID? ~ selector* ~ filters? ~ asignation? }
 query_recurse = { DOT_ID? ~ ( "<" | "<<" | ">" | ">>" ) ~ asignation? }
 query_union = { "(" ~ (query_sequence ~ ";" )+ ~ ")" ~ asignation? }
-query_sequence = { query_object | query_recurse | query_union }
+query_foreach = { "foreach" ~ DOT_ID? ~ asignation? ~ "(" ~ subrequest ~ ")" }
+query_sequence = { query_object | query_recurse | query_union | query_foreach }
 
 out_geom = { "geom" | "center" | "bb" }
 out_level_of_details = { "ids" | "skel" | "body" | "tags" | "meta" }

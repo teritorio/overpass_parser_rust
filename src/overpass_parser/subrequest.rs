@@ -1,4 +1,7 @@
-use std::{collections::HashSet, sync::atomic::{AtomicU64, Ordering}};
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use crate::overpass_parser::out::Out;
 use pest::iterators::Pair;
@@ -9,8 +12,8 @@ use crate::sql_dialect::sql_dialect::SqlDialect;
 use derivative::Derivative;
 
 use super::{
-    Rule, query::Query, query_objects::QueryObjects, query_recurse::QueryRecurse,
-    query_union::QueryUnion,
+    Rule, query::Query, query_foreach::QueryForeach, query_objects::QueryObjects,
+    query_recurse::QueryRecurse, query_union::QueryUnion,
 };
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -20,6 +23,7 @@ pub enum QueryType {
     QueryObjects(QueryObjects),
     QueryUnion(QueryUnion),
     QueryRecurse(QueryRecurse),
+    QueryForeach(QueryForeach),
 }
 
 impl QueryType {
@@ -28,6 +32,7 @@ impl QueryType {
             QueryType::QueryObjects(query) => query.asignation.clone(),
             QueryType::QueryUnion(query) => query.asignation.clone(),
             QueryType::QueryRecurse(query) => query.asignation.clone(),
+            QueryType::QueryForeach(query) => query.loop_var.clone(),
         }
     }
 }
@@ -46,6 +51,10 @@ impl Query for QueryType {
             Rule::query_recurse => {
                 let query_recurse = QueryRecurse::from_pest(pair)?;
                 Ok(Box::new(QueryType::QueryRecurse(*query_recurse)))
+            }
+            Rule::query_foreach => {
+                let query_foreach = QueryForeach::from_pest(pair)?;
+                Ok(Box::new(QueryType::QueryForeach(*query_foreach)))
             }
             _ => Err(pest::error::Error::new_from_span(
                 pest::error::ErrorVariant::CustomError {
@@ -66,6 +75,7 @@ impl Query for QueryType {
             QueryType::QueryObjects(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryRecurse(query) => query.to_sql(sql_dialect, srid, default_set),
+            QueryType::QueryForeach(query) => query.to_sql(sql_dialect, srid, default_set),
         }
     }
 }
@@ -127,9 +137,14 @@ impl Subrequest {
         Ok(subrequest)
     }
 
-    pub fn to_sql(&self, sql_dialect: &(dyn SqlDialect + Send + Sync), srid: &str) -> Vec<String> {
+    pub fn to_sql(
+        &self,
+        sql_dialect: &(dyn SqlDialect + Send + Sync),
+        srid: &str,
+        default_set: &str,
+    ) -> Vec<String> {
         let mut precomputed = Vec::new();
-        let mut previous_default_set: String = "_".into();
+        let mut previous_default_set: String = default_set.to_string();
         let replace = Regex::new(r"(?m)^").unwrap();
         let mut clauses = Vec::new();
         self.queries.iter().for_each(|query| match query.as_ref() {
@@ -182,23 +197,41 @@ impl Subrequest {
             .map(|(is_out, set, sql)| (*is_out, set.clone(), sql.clone()))
             .collect::<Vec<(bool, String, String)>>();
 
-       let mut declared_sets: HashSet<String> = HashSet::new();
+        let mut declared_sets: HashSet<String> = HashSet::new();
         let with_join = clauses
             .iter()
             .filter_map(|(_, set, sql)| {
                 let already_declared = declared_sets.contains(set);
                 declared_sets.insert(set.clone());
                 if !already_declared {
-                    Some(format!("_{set} AS (\n{}\n)", replace.replace_all(sql, "    ")))
+                    Some(format!(
+                        "_{set} AS (\n{}\n)",
+                        replace.replace_all(sql, "    ")
+                    ))
                 } else {
                     Option::None
                 }
             })
             .collect::<Vec<String>>()
             .join(",\n");
-        let select = clauses
+        let mut select_out = clauses
             .iter()
             .filter(|(is_out, _, _)| *is_out)
+            .collect::<Vec<&(bool, String, String)>>();
+        let d = (
+            true,
+            clauses
+                .last()
+                .map(|(_, set, _)| set.clone())
+                .unwrap_or(default_set.to_string()),
+            // previous_default_set.strip_prefix('_').unwrap().to_string(),
+            "".to_string(),
+        );
+        if select_out.is_empty() {
+            select_out.push(&d);
+        }
+        let select = select_out
+            .into_iter()
             .map(|(_, set, _sql)| format!("SELECT * FROM _{set}"))
             .collect::<Vec<String>>()
             .join("\nUNION ALL\n");
@@ -293,7 +326,7 @@ _b AS (
     WHERE
         relation.osm_type = 'r'
 )
-
+SELECT * FROM _b
 ;"], sql);
             }
             Err(e) => {
@@ -313,8 +346,10 @@ _b AS (
             Ok(request) => {
                 let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
                 let sql = request.to_sql(d, "9999", None);
-                assert_eq!(vec!["SET statement_timeout = 160000;",
-                "WITH
+                assert_eq!(
+                    vec![
+                        "SET statement_timeout = 160000;",
+                        "WITH
 _poly_11689077968748950118 AS (
     SELECT
         geom
@@ -347,8 +382,11 @@ _w AS (
             way_by_geom.geom
         )
 )
-
-;"], sql);
+SELECT * FROM _w
+;"
+                    ],
+                    sql
+                );
             }
             Err(e) => {
                 println!("Error parsing query: {e}");
