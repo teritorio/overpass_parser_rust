@@ -12,8 +12,8 @@ use crate::sql_dialect::sql_dialect::SqlDialect;
 use derivative::Derivative;
 
 use super::{
-    Rule, query::Query, query_foreach::QueryForeach, query_objects::QueryObjects,
-    query_recurse::QueryRecurse, query_union::QueryUnion,
+    Rule, query::Query, query_convert::QueryConvert, query_foreach::QueryForeach,
+    query_objects::QueryObjects, query_recurse::QueryRecurse, query_union::QueryUnion,
 };
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -24,6 +24,7 @@ pub enum QueryType {
     QueryUnion(QueryUnion),
     QueryRecurse(QueryRecurse),
     QueryForeach(QueryForeach),
+    QueryConvert(QueryConvert),
 }
 
 impl QueryType {
@@ -33,6 +34,7 @@ impl QueryType {
             QueryType::QueryUnion(query) => query.asignation.clone(),
             QueryType::QueryRecurse(query) => query.asignation.clone(),
             QueryType::QueryForeach(query) => query.loop_var.clone(),
+            QueryType::QueryConvert(_) => None,
         }
     }
 }
@@ -56,6 +58,10 @@ impl Query for QueryType {
                 let query_foreach = QueryForeach::from_pest(pair)?;
                 Ok(Box::new(QueryType::QueryForeach(*query_foreach)))
             }
+            Rule::convert => {
+                let convert = QueryConvert::from_pest(pair)?;
+                Ok(Box::new(QueryType::QueryConvert(*convert)))
+            }
             _ => Err(pest::error::Error::new_from_span(
                 pest::error::ErrorVariant::CustomError {
                     message: format!("Invalid rule {:?} for QueryType", pair.as_rule()),
@@ -76,6 +82,7 @@ impl Query for QueryType {
             QueryType::QueryUnion(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryRecurse(query) => query.to_sql(sql_dialect, srid, default_set),
             QueryType::QueryForeach(query) => query.to_sql(sql_dialect, srid, default_set),
+            QueryType::QueryConvert(query) => query.to_sql(sql_dialect, srid, default_set),
         }
     }
 }
