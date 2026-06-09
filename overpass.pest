@@ -38,7 +38,7 @@ filters = { filter+ }
 
 asignation = { "->" ~ DOT_ID }
 
-object_type = { "node" | "way" | "relation" | "area" | "nwr" }
+object_type = { "node" | "way" | "relation" | "rel" | "area" | "nwr" }
 query_object = { object_type ~ DOT_ID? ~ selector* ~ filters? ~ asignation? }
 query_recurse = { DOT_ID? ~ ( "<" | "<<" | ">" | ">>" ) ~ asignation? }
 query_union = { "(" ~ (query_sequence ~ ";" )+ ~ ")" ~ asignation? }
