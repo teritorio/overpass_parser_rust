@@ -26,6 +26,7 @@ pub struct Filter {
     pub ids: Option<Vec<i64>>,
     pub area_id: Option<Box<str>>,
     pub around: Option<FilterAround>,
+    pub recurse: Option<Box<str>>,
 }
 
 impl Filter {
@@ -110,6 +111,9 @@ impl Filter {
                 }
                 filter.around = Some(around);
             }
+            Rule::filter_recurse => {
+                filter.recurse = Some(pair.as_str().into());
+            }
             _ => {
                 return Err(pest::error::Error::new_from_span(
                     pest::error::ErrorVariant::CustomError {
@@ -170,7 +174,7 @@ impl Filter {
     {}
 FROM
     (VALUES ({poly})) AS p(geom)",
-                sql_dialect.make_geom_fields()
+                    sql_dialect.make_geom_fields()
                 )
                 .to_string(),
             },
@@ -251,10 +255,41 @@ FROM
         }
     }
 
+    fn recurse_clause(recurse: &str, set: &str, default_set: &str) -> String {
+        match recurse {
+            // forward from ways: select nodes that are members of ways in the input set
+            "w" => format!(
+                "JOIN _{default_set} AS w ON w.osm_type = 'w' AND {set}.osm_type = 'n' AND array[{set}.id] <@ w.nodes"
+            ),
+            // forward from relations: select elements that are members of relations in the input set
+                "r" => format!(
+                "JOIN _{default_set} AS r ON r.osm_type = 'r'
+    JOIN LATERAL jsonb_to_recordset(r.members) AS m(type text, ref bigint, role text) ON m.type = {set}.osm_type AND m.ref = {set}.id"
+            ),
+            // backward from nodes: select ways/relations that contain nodes from the input set
+            "bn" => format!(
+                "JOIN _{default_set} AS bn ON _.osm_type = 'n' AND (
+    bn.osm_type = 'w' AND array[bn.id] <@ {set}.nodes OR
+    bn.osm_type = 'r' AND array[bn.id] <@ osm_base_idx_nodes_members({set}.members, 'n')
+)"
+            ),
+            // backward from ways: select relations that contain ways from the input set
+            "bw" => format!(
+                "JOIN _{default_set} AS bw ON {set}.osm_type = 'w' AND bw.osm_type = 'r' AND array[bw.id] <@ osm_base_idx_nodes_members({set}.members, 'w')"
+            ),
+            // backward from relations: select relations that contain relations from the input set
+            "br" => format!(
+                "JOIN _{default_set} AS br ON {set}.osm_type = 'r' AND br.osm_type = 'r' AND array[br.id] <@ osm_base_idx_nodes_members({set}.members, 'r')"
+            ),
+            _ => panic!("Invalid or Not Implemented recurse type: {recurse}"),
+        }
+    }
+
     pub fn to_sql(
         &self,
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
+        default_set: &str,
         srid: &str,
     ) -> (Option<SubrequestJoin>, SubrequestJoin) {
         let mut pre: Option<SubrequestJoin> = None;
@@ -290,6 +325,14 @@ FROM
                 precompute: None,
                 from: None,
                 clauses: Self::around_clause(sql_dialect, set, srid, around),
+            });
+        }
+        if let Some(recurse_type) = &self.recurse {
+            clauses.push(SubrequestJoin {
+                precompute_set: None,
+                precompute: None,
+                from: Some(Self::recurse_clause(recurse_type, set, default_set)),
+                clauses: "true".to_string(),
             });
         }
 
@@ -342,6 +385,7 @@ impl Filters {
         &self,
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         set: &str,
+        default_set: &str,
         srid: &str,
     ) -> (Option<SubrequestJoin>, SubrequestJoin) {
         let mut pre: Option<SubrequestJoin> = None;
@@ -349,7 +393,7 @@ impl Filters {
             .filters
             .iter()
             .map(|filter| {
-                let (preee, clause) = filter.to_sql(sql_dialect, set, srid);
+                let (preee, clause) = filter.to_sql(sql_dialect, set, default_set, srid);
                 if preee.is_some() {
                     pre = preee;
                 }
@@ -426,29 +470,35 @@ mod tests {
         ST_Transform(ST_Envelope('SRID=4326;LINESTRING(2 -1.1, 4 3)'::geometry), 9999),
         _.geom
     )",
-            parse("(-1.1,2,3,4)").to_sql(d, "_", "9999").1.clauses
+            parse("(-1.1,2,3,4)").to_sql(d, "_", "_d", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
         _poly_11689077968748950118.geom,
         _.geom
     )",
-            parse("(poly:\"1 2 3 4\")").to_sql(d, "_", "9999").1.clauses
+            parse("(poly:\"1 2 3 4\")")
+                .to_sql(d, "_", "_d", "9999")
+                .1
+                .clauses
         );
         assert_eq!(
             "_.id = ANY (ARRAY[11111111111111])",
-            parse("(11111111111111)").to_sql(d, "_", "9999").1.clauses
+            parse("(11111111111111)")
+                .to_sql(d, "_", "_d", "9999")
+                .1
+                .clauses
         );
         assert_eq!(
             "_.id = ANY (ARRAY[1, 2, 3])",
-            parse("(id:1,2,3)").to_sql(d, "_", "9999").1.clauses
+            parse("(id:1,2,3)").to_sql(d, "_", "_d", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
         _a.geom,
         _.geom
     )",
-            parse("(area.a)").to_sql(d, "_", "9999").1.clauses
+            parse("(area.a)").to_sql(d, "_", "_d", "9999").1.clauses
         );
         assert_eq!(
             "ST_Intersects(
@@ -469,7 +519,22 @@ mod tests {
             ), 9999),
         _.geom
     )",
-            parse("(around.a:12.3)").to_sql(d, "_", "9999").1.clauses
+            parse("(around.a:12.3)")
+                .to_sql(d, "_", "_d", "9999")
+                .1
+                .clauses
+        );
+        // recurse filters — use table-prefixed set so object type can be inferred
+        assert_eq!(
+            "JOIN _d AS br ON _.osm_type = 'r' AND br.osm_type = 'r' AND array[br.id] <@ osm_base_idx_nodes_members(_.members, 'r')",
+            parse("(br)").to_sql(d, "_", "d", "9999").1.from.unwrap()
+        );
+        assert_eq!(
+            "JOIN _d AS bn ON _.osm_type = 'n' AND (
+    bn.osm_type = 'w' AND array[bn.id] <@ _.nodes OR
+    bn.osm_type = 'r' AND array[bn.id] <@ osm_base_idx_nodes_members(_.members, 'n')
+)",
+            parse("(bn)").to_sql(d, "_", "d", "9999").1.from.unwrap()
         );
 
         // Combined filters
@@ -483,7 +548,7 @@ mod tests {
         _.geom
     )",
             parse("(poly:\"1 2 3 4\")(area.a)")
-                .to_sql(d, "_", "9999")
+                .to_sql(d, "_", "d", "9999")
                 .1
                 .clauses
         );

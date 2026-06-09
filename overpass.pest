@@ -29,11 +29,12 @@ filter_bbox = { number ~ "," ~ number ~ "," ~ number ~ "," ~ number }
 filter_poly = { "poly:" ~ QUOTED_STRING }
 filter_osm_id = { osm_id }
 filter_osm_ids = { "id:" ~ osm_id ~ ("," ~ osm_id)* }
+filter_recurse = { "bn" | "bw" | "br" | "n" | "w" | "r" }
 filter_area = { "area" ~ DOT_ID }
 filter_around_core = { DOT_ID }
 filter_around_radius = { number }
 filter_around = { "around" ~ filter_around_core ~ ":" ~ filter_around_radius }
-filter = _{ "(" ~ ( filter_bbox | filter_poly | filter_osm_id | filter_osm_ids | filter_area | filter_around ) ~ ")" }
+filter = _{ "(" ~ ( filter_bbox | filter_poly | filter_osm_id | filter_osm_ids | filter_area | filter_around | filter_recurse ) ~ ")" }
 filters = { filter+ }
 
 asignation = { "->" ~ DOT_ID }
