@@ -1,7 +1,6 @@
 use pest::iterators::Pair;
 
 use derivative::Derivative;
-use regex::Regex;
 
 use crate::sql_dialect::sql_dialect::SqlDialect;
 
@@ -64,8 +63,6 @@ impl Out {
         let st_transform_reverse = sql_dialect.st_transform_reverse("geom", srid);
         let st_asgeojson = sql_dialect.st_asgeojson(&st_transform_reverse, 7);
         let jsonb_agg = sql_dialect.jsonb_agg();
-
-        let replace = Regex::new(r"\n").unwrap();
 
         let meta_fields = if meta {
             ",\n    'timestamp', created,

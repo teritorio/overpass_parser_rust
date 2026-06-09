@@ -49,7 +49,7 @@ impl Request {
         &self,
         sql_dialect: &(dyn SqlDialect + Send + Sync),
         srid: &str,
-        finalizer: Option<&str>,
+        _finalizer: Option<&str>,
     ) -> Vec<String> {
         let mut select = self.subrequest.to_sql(sql_dialect, srid);
         let timeout = sql_dialect.statement_timeout(self.timeout.unwrap_or(180).min(500) * 1000);
@@ -92,7 +92,7 @@ mod tests {
                 (1, 2, 3, 4);
             out;",
         ];
-        queries.map(|query| {
+        let _ = queries.map(|query| {
             match parse_query(query) {
                 Ok(request) => {
                     let d = &Postgres::default() as &(dyn SqlDialect + Send + Sync);
