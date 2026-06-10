@@ -35,8 +35,7 @@ mod tests {
         },
     };
     use pretty_assertions::assert_eq;
-
-    // TODO other tests
+    use regex::Regex;
 
     #[test]
     fn test_to_sql() {
@@ -436,7 +435,6 @@ _999 AS (
         JOIN LATERAL jsonb_to_recordset(r.members) AS m(type text, ref bigint, role text) ON m.type = node_by_geom.osm_type AND m.ref = node_by_geom.id
     WHERE
         node_by_geom.osm_type = 'n' AND
-        (node_by_geom.tags?'highway' AND node_by_geom.tags->>'highway' = 'bus_stop') AND
         true
 ),
 _out_999 AS (
