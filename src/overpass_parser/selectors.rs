@@ -21,7 +21,7 @@ pub struct Selector {
 }
 
 impl Selector {
-    fn unquote(value: &str) -> &str {
+    pub fn unquote(value: &str) -> &str {
         if (value.starts_with('"') && value.ends_with('"'))
             || (value.starts_with('\'') && value.ends_with('\''))
         {

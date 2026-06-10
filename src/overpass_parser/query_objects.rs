@@ -124,7 +124,7 @@ impl Query for QueryObjects {
         let mut precomputed = Vec::new();
         let mut from = from_table.clone();
         if let Some(filters) = &self.filters {
-            let (pree, sj) = filters.to_sql(sql_dialect, &from, &default_set, srid);
+            let (pree, sj) = filters.to_sql(sql_dialect, &from, default_set, srid);
             if pree.is_some() {
                 pre = pree;
             }
