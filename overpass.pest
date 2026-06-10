@@ -44,7 +44,8 @@ metadata_key = { "id" | "type" | "otype" | "lat" | "lon" | "version" | "timestam
 
 eval_fn = { ID ~ "()" }
 eval_tag = { "t" ~ "[" ~ key ~ "]" }
-eval = { eval_fn | eval_tag | STRING | number }
+eval_agg_set = { ID ~ "." ~ "set" ~ "(" ~ eval ~ ")" }
+eval = { eval_fn | eval_tag | eval_agg_set | STRING | number }
 
 convert_key = { "::" ~ metadata_key | key }
 convert_key_eval      = { convert_key ~ "=" ~ eval }

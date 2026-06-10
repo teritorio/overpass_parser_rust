@@ -10,6 +10,8 @@ use super::Rule;
 #[derive(Debug, Clone)]
 pub struct Evaluator {
     pub fn_call: Option<Box<str>>,
+    pub agg_set_call: Option<Box<str>>,
+    pub param: Option<Box<Evaluator>>,
     pub tag_call: Option<Box<str>>,
     pub static_value: Option<Box<str>>,
 }
@@ -38,6 +40,23 @@ impl Evaluator {
                             .unwrap(),
                     );
                     evaluator.tag_call = Some(tag.into());
+                }
+                Rule::eval_agg_set => {
+                    evaluator.agg_set_call = Some(
+                        inner_pair
+                            .clone()
+                            .into_inner()
+                            .find(|p| p.as_rule() == Rule::ID)
+                            .map(|p| p.as_str())
+                            .unwrap()
+                            .into(),
+                    );
+                    evaluator.param = Some(Box::new(Evaluator::from_pest(
+                        inner_pair
+                            .into_inner()
+                            .find(|p| p.as_rule() == Rule::eval)
+                            .unwrap(),
+                    )?));
                 }
                 Rule::STRING => {
                     evaluator.static_value = Some(inner_pair.as_str().to_string().into());
@@ -85,6 +104,15 @@ impl Evaluator {
             format!(
                 "tags ->> {}",
                 sql_dialect.escape_literal(self.tag_call.as_ref().unwrap())
+            )
+        } else if self.agg_set_call.is_some() {
+            format!(
+                "(SELECT string_agg({}, ',') FROM _{})",
+                self.param
+                    .as_ref()
+                    .unwrap()
+                    .to_sql(sql_dialect, _srid, _default_set),
+                self.agg_set_call.as_ref().unwrap()
             )
         } else {
             panic!("Evaluator must have either a static value or a function call")
@@ -137,5 +165,13 @@ mod tests {
         let query = "t['h']";
         let eval = parse(query);
         assert_eq!(eval.tag_call, Some("h".into()));
+    }
+
+    #[test]
+    fn test_parse_agg() {
+        let query = "r.set(t['ref'])";
+        let eval = parse(query);
+        assert_eq!(eval.agg_set_call, Some("r".into()));
+        assert_eq!(eval.param.unwrap().tag_call, Some("ref".into()));
     }
 }
