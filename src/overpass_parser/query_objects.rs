@@ -1,5 +1,8 @@
 use crate::{
-    overpass_parser::{filters::Filters, selectors::Selector},
+    overpass_parser::{
+        filters::{Filter, Filters},
+        selectors::Selector,
+    },
     sql_dialect::sql_dialect::SqlDialect,
 };
 use pest::iterators::Pair;
@@ -14,7 +17,7 @@ use super::{Rule, query::Query, selectors::Selectors, subrequest::SubrequestJoin
 pub struct QueryObjects {
     pub object_type: Box<str>,
     pub selectors: Selectors,
-    pub filters: Option<Filters>,
+    pub filters: Filters,
     pub set: Option<Box<str>>,
     pub asignation: Option<Box<str>>,
 }
@@ -35,8 +38,11 @@ impl Query for QueryObjects {
                                 .selectors
                                 .push(Selector::from_pest(inner_pair)?);
                         }
-                        Rule::filters => {
-                            query_objects.filters = Some(Filters::from_pest(inner_pair)?);
+                        Rule::filter => {
+                            query_objects
+                                .filters
+                                .filters
+                                .push(Filter::from_pest(inner_pair)?);
                         }
                         Rule::ID => {
                             query_objects.set = Some(inner_pair.as_str().into());
@@ -87,7 +93,7 @@ impl Query for QueryObjects {
             if from == "rel" {
                 from = "relation".to_string();
             }
-            if self.filters.is_some() && self.filters.as_ref().unwrap().has_ids() {
+            if self.filters.has_ids() {
                 format!("{from}_by_id")
             } else {
                 format!("{from}_by_geom")
@@ -110,21 +116,18 @@ impl Query for QueryObjects {
         }
 
         if !self.selectors.selectors.is_empty() {
-            let selectors_sql = self
-                .selectors
-                .selectors
-                .iter()
-                .map(|selector| selector.to_sql(sql_dialect, from_table.as_str(), srid))
-                .collect::<Vec<String>>()
-                .join(" AND ");
-            where_clauses.push(selectors_sql);
+            where_clauses.push(
+                self.selectors
+                    .to_sql(sql_dialect, from_table.as_str(), srid),
+            );
         }
 
         let mut pre: Option<SubrequestJoin> = None;
         let mut precomputed = Vec::new();
         let mut from = from_table.clone();
-        if let Some(filters) = &self.filters {
-            let (pree, sj) = filters.to_sql(sql_dialect, &from, default_set, srid);
+
+        if !self.filters.filters.is_empty() {
+            let (pree, sj) = self.filters.to_sql(sql_dialect, &from, default_set, srid);
             if pree.is_some() {
                 pre = pree;
             }
@@ -223,7 +226,7 @@ FROM
     _a.*
 FROM
     _a
-        JOIN _poly_15599741043204530343 ON true
+    JOIN _poly_15599741043204530343 ON true
 WHERE
     _a.osm_type = 'n' AND
     ST_Intersects(

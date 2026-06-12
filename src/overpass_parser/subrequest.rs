@@ -368,7 +368,7 @@ _n AS (
         node_by_geom.*
     FROM
         node_by_geom
-            JOIN _poly_11689077968748950118 ON true
+        JOIN _poly_11689077968748950118 ON true
     WHERE
         node_by_geom.osm_type = 'n' AND
         ST_Intersects(
@@ -381,7 +381,7 @@ _w AS (
         way_by_geom.*
     FROM
         way_by_geom
-            JOIN _poly_11689077968748950118 ON true
+        JOIN _poly_11689077968748950118 ON true
     WHERE
         way_by_geom.osm_type = 'w' AND
         ST_Intersects(

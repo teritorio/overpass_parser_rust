@@ -74,8 +74,8 @@ _k AS (
         nwr_by_geom.*
     FROM
         nwr_by_geom
-            JOIN _poly_11689077968748950118 ON true
-        JOIN _a ON true
+        JOIN _poly_11689077968748950118 ON true
+    JOIN _a ON true
     WHERE
         (nwr_by_geom.tags?'a' AND nwr_by_geom.tags->>'a' = 'Ñ''') AND (nwr_by_geom.tags?'b' AND nwr_by_geom.tags->>'b' = '\"') AND
         ST_Intersects(
@@ -92,7 +92,7 @@ _k AS (
         nwr_by_geom.*
     FROM
         nwr_by_geom
-            JOIN _a ON true
+        JOIN _a ON true
     WHERE
         nwr_by_geom.tags?'c' AND
         ST_Intersects(
@@ -435,6 +435,7 @@ _999 AS (
         JOIN LATERAL jsonb_to_recordset(r.members) AS m(type text, ref bigint, role text) ON m.type = node_by_geom.osm_type AND m.ref = node_by_geom.id
     WHERE
         node_by_geom.osm_type = 'n' AND
+        (node_by_geom.tags?'highway' AND node_by_geom.tags->>'highway' = 'bus_stop') AND
         true
 ),
 _out_999 AS (

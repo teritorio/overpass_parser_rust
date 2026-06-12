@@ -32,95 +32,97 @@ pub struct Filter {
 impl Filter {
     pub fn from_pest(pair: Pair<Rule>) -> Result<Self, pest::error::Error<Rule>> {
         let mut filter = Filter::default();
-        match pair.as_rule() {
-            Rule::filter_bbox => {
-                let coords: Vec<f64> = pair
-                    .as_str()
-                    .split(',')
-                    .filter_map(|s| s.trim().parse().ok())
-                    .collect();
-                if coords.len() == 4 {
-                    filter.bbox = Some((coords[0], coords[1], coords[2], coords[3]));
-                }
-            }
-            Rule::filter_poly => {
-                let a = pair.into_inner().next().unwrap().as_str();
-                let points: Vec<(f64, f64)> = Regex::new(r"\s+")
-                    .unwrap()
-                    .split(&(a[1..a.len() - 1]))
-                    .map(|s| s.parse::<f64>().ok().unwrap())
-                    .collect::<Vec<f64>>()
-                    .chunks(2)
-                    .map(|chunk| {
-                        if chunk.len() == 2 {
-                            (chunk[0], chunk[1])
-                        } else {
-                            panic!("Invalid point in poly filter: {chunk:?}");
-                        }
-                    })
-                    .collect::<Vec<(f64, f64)>>();
-                filter.poly = Some(points);
-            }
-            Rule::filter_osm_id => {
-                if let Ok(id) = pair.as_str().parse::<i64>() {
-                    filter.ids = Some(vec![id]);
-                }
-            }
-            Rule::filter_osm_ids => {
-                let ids: Vec<i64> = pair
-                    .into_inner()
-                    .filter_map(|id_pair| id_pair.as_str().parse().ok())
-                    .collect();
-                filter.ids = Some(ids);
-            }
-            Rule::filter_area => {
-                filter.area_id = pair
-                    .into_inner()
-                    .find(|p| p.as_rule() == Rule::ID)
-                    .map(|p| p.as_str().into());
-            }
-            Rule::filter_around => {
-                let mut around = FilterAround::default();
-                for around_inner in pair.into_inner() {
-                    match around_inner.as_rule() {
-                        Rule::filter_around_core => {
-                            around.core = around_inner
-                                .into_inner()
-                                .find(|p| p.as_rule() == Rule::ID)
-                                .map(|p| p.as_str())
-                                .unwrap()
-                                .into();
-                        }
-                        Rule::filter_around_radius => {
-                            if let Ok(radius) = around_inner.as_str().parse::<f64>() {
-                                around.radius = radius;
-                            }
-                        }
-                        _ => {
-                            return Err(pest::error::Error::new_from_span(
-                                pest::error::ErrorVariant::CustomError {
-                                    message: format!(
-                                        "Invalid rule {:?} for FilterAround",
-                                        around_inner.as_rule()
-                                    ),
-                                },
-                                around_inner.as_span(),
-                            ));
-                        }
+        for inner_pair in pair.into_inner() {
+            match inner_pair.as_rule() {
+                Rule::filter_bbox => {
+                    let coords: Vec<f64> = inner_pair
+                        .as_str()
+                        .split(',')
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect();
+                    if coords.len() == 4 {
+                        filter.bbox = Some((coords[0], coords[1], coords[2], coords[3]));
                     }
                 }
-                filter.around = Some(around);
-            }
-            Rule::filter_recurse => {
-                filter.recurse = Some(pair.as_str().into());
-            }
-            _ => {
-                return Err(pest::error::Error::new_from_span(
-                    pest::error::ErrorVariant::CustomError {
-                        message: format!("Invalid rule {:?} for Filter", pair.as_rule()),
-                    },
-                    pair.as_span(),
-                ));
+                Rule::filter_poly => {
+                    let a = inner_pair.into_inner().next().unwrap().as_str();
+                    let points: Vec<(f64, f64)> = Regex::new(r"\s+")
+                        .unwrap()
+                        .split(&(a[1..a.len() - 1]))
+                        .map(|s| s.parse::<f64>().ok().unwrap())
+                        .collect::<Vec<f64>>()
+                        .chunks(2)
+                        .map(|chunk| {
+                            if chunk.len() == 2 {
+                                (chunk[0], chunk[1])
+                            } else {
+                                panic!("Invalid point in poly filter: {chunk:?}");
+                            }
+                        })
+                        .collect::<Vec<(f64, f64)>>();
+                    filter.poly = Some(points);
+                }
+                Rule::filter_osm_id => {
+                    if let Ok(id) = inner_pair.as_str().parse::<i64>() {
+                        filter.ids = Some(vec![id]);
+                    }
+                }
+                Rule::filter_osm_ids => {
+                    let ids: Vec<i64> = inner_pair
+                        .into_inner()
+                        .filter_map(|id_pair| id_pair.as_str().parse().ok())
+                        .collect();
+                    filter.ids = Some(ids);
+                }
+                Rule::filter_area => {
+                    filter.area_id = inner_pair
+                        .into_inner()
+                        .find(|p| p.as_rule() == Rule::ID)
+                        .map(|p| p.as_str().into());
+                }
+                Rule::filter_around => {
+                    let mut around = FilterAround::default();
+                    for around_inner in inner_pair.into_inner() {
+                        match around_inner.as_rule() {
+                            Rule::filter_around_core => {
+                                around.core = around_inner
+                                    .into_inner()
+                                    .find(|p| p.as_rule() == Rule::ID)
+                                    .map(|p| p.as_str())
+                                    .unwrap()
+                                    .into();
+                            }
+                            Rule::filter_around_radius => {
+                                if let Ok(radius) = around_inner.as_str().parse::<f64>() {
+                                    around.radius = radius;
+                                }
+                            }
+                            _ => {
+                                return Err(pest::error::Error::new_from_span(
+                                    pest::error::ErrorVariant::CustomError {
+                                        message: format!(
+                                            "Invalid rule {:?} for FilterAround",
+                                            around_inner.as_rule()
+                                        ),
+                                    },
+                                    around_inner.as_span(),
+                                ));
+                            }
+                        }
+                    }
+                    filter.around = Some(around);
+                }
+                Rule::filter_recurse => {
+                    filter.recurse = Some(inner_pair.as_str().into());
+                }
+                _ => {
+                    return Err(pest::error::Error::new_from_span(
+                        pest::error::ErrorVariant::CustomError {
+                            message: format!("Invalid rule {:?} for Filter", inner_pair.as_rule()),
+                        },
+                        inner_pair.as_span(),
+                    ));
+                }
             }
         }
         Ok(filter)
@@ -183,8 +185,7 @@ FROM
                 precompute: sql_dialect
                     .is_precompute()
                     .then(|| vec![poly_id.to_string()]),
-                from: (!sql_dialect.is_precompute())
-                    .then(|| format!("    JOIN _{poly_id} ON true")),
+                from: (!sql_dialect.is_precompute()).then(|| format!("JOIN _{poly_id} ON true")),
                 clauses: sql_dialect.st_intersects_with_geom(
                     set,
                     sql_dialect.table_precompute_geom(poly_id.as_str()).as_str(),
@@ -249,7 +250,7 @@ FROM
             precompute: sql_dialect
                 .is_precompute()
                 .then(|| vec![area_id.to_string()]),
-            from: (!sql_dialect.is_precompute()).then(|| format!("    JOIN _{area_id} ON true")),
+            from: (!sql_dialect.is_precompute()).then(|| format!("JOIN _{area_id} ON true")),
             clauses: sql_dialect
                 .st_intersects_with_geom(set, sql_dialect.table_precompute_geom(area_id).as_str()),
         }
@@ -363,6 +364,8 @@ FROM
     }
 }
 
+#[derive(Derivative)]
+#[derivative(Default)]
 #[derive(Debug, Clone)]
 pub struct Filters {
     pub filters: Vec<Filter>,
@@ -444,9 +447,7 @@ mod tests {
         match parse_query(format!("node{query};").as_str()) {
             Ok(parsed) => match parsed.subrequest.queries[0].as_ref() {
                 SubrequestType::QueryType(query_type) => match query_type {
-                    QueryType::QueryObjects(query_objets) => {
-                        query_objets.filters.as_ref().unwrap().clone()
-                    }
+                    QueryType::QueryObjects(query_objets) => query_objets.filters.clone(),
                     _ => panic!(
                         "Expected a QueryObjects, got {:?}",
                         parsed.subrequest.queries[0]
@@ -524,6 +525,7 @@ mod tests {
                 .1
                 .clauses
         );
+
         // recurse filters — use table-prefixed set so object type can be inferred
         assert_eq!(
             "JOIN _d AS br ON _.osm_type = 'r' AND br.osm_type = 'r' AND array[br.id] <@ osm_base_idx_nodes_members(_.members, 'r')",
@@ -537,6 +539,13 @@ mod tests {
             parse("(bn)").to_sql(d, "_", "d", "9999").1.from.unwrap()
         );
 
+        println!(
+            "{}",
+            parse("(poly:\"1 2 3 4\")(area.a)")
+                .to_sql(d, "_", "d", "9999")
+                .1
+                .clauses
+        );
         // Combined filters
         assert_eq!(
             "ST_Intersects(
