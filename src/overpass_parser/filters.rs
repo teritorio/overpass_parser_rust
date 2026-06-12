@@ -200,43 +200,22 @@ FROM
         srid: &str,
         around: &FilterAround,
     ) -> String {
-        let core_geom = format!(
-            "(SELECT {}(geom) FROM _{})",
-            sql_dialect.st_union(),
-            around.core
-        );
-        let utm_zone = format!(
-            "
-                -- Calculate UTM zone from
-                32600 +
-                CASE WHEN ST_Y(ST_Centroid(
-                    {core_geom}
-                )) >= 0 THEN 1 ELSE 31 END +
-                floor(ST_X(ST_Centroid(
-                    {core_geom}
-                ) + 180) / 6)
-            "
-        );
-        sql_dialect.st_intersects_with_geom(
-            set,
-            &sql_dialect.st_transform(
-                &format!(
-                    "
-        ST_Buffer(
-            {},
-            {}
-        )",
-                    sql_dialect.st_transform(
-                        &format!(
-                            "
-                {core_geom}"
-                        ),
-                        &utm_zone
-                    ),
-                    around.radius
+        let join = sql_dialect.st_subdivide(
+            &sql_dialect.st_dump_geom(&sql_dialect.st_transform_reverse(
+                &sql_dialect.st_buffer(
+                    &sql_dialect.st_transform(&sql_dialect.st_union_agg("geom"), srid),
+                    around.radius,
                 ),
                 srid,
-            ),
+            )),
+            1000,
+        );
+        let on = sql_dialect.st_intersects_with_geom("subdivided_geom", &format!("{set}.geom"));
+
+        format!(
+            "JOIN (SELECT {join} AS geom FROM _{}) AS subdivided_geom ON
+    {on}",
+            around.core
         )
     }
 
@@ -324,8 +303,8 @@ FROM
             clauses.push(SubrequestJoin {
                 precompute_set: None,
                 precompute: None,
-                from: None,
-                clauses: Self::around_clause(sql_dialect, set, srid, around),
+                from: Some(Self::around_clause(sql_dialect, set, srid, around)),
+                clauses: "true".to_string(),
             });
         }
         if let Some(recurse_type) = &self.recurse {
@@ -502,28 +481,16 @@ mod tests {
             parse("(area.a)").to_sql(d, "_", "_d", "9999").1.clauses
         );
         assert_eq!(
-            "ST_Intersects(
-        ST_Transform(
-            ST_Buffer(
-                ST_Transform(
-                    (SELECT ST_Union(geom) FROM _a),\x20
-                    -- Calculate UTM zone from
-                    32600 +
-                    CASE WHEN ST_Y(ST_Centroid(
-                        (SELECT ST_Union(geom) FROM _a)
-                    )) >= 0 THEN 1 ELSE 31 END +
-                    floor(ST_X(ST_Centroid(
-                        (SELECT ST_Union(geom) FROM _a)
-                    ) + 180) / 6)
-                ),
-                12.3
-            ), 9999),
-        _.geom
-    )",
+            "JOIN (SELECT ST_Subdivide((ST_Dump(ST_Transform(ST_Buffer(ST_Transform(ST_Union(geom), 9999), 12.3), 4326))).geom, 1000) AS geom FROM _a) AS subdivided_geom ON
+    ST_Intersects(
+    _.geom,
+    subdivided_geom.geom
+)",
             parse("(around.a:12.3)")
                 .to_sql(d, "_", "_d", "9999")
                 .1
-                .clauses
+                .from
+                .unwrap()
         );
 
         // recurse filters — use table-prefixed set so object type can be inferred

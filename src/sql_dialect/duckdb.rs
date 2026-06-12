@@ -16,14 +16,15 @@ pub mod duckdb {
             None
         }
 
-        fn make_geom_fields(&self)  -> String {
+        fn make_geom_fields(&self) -> String {
             "geom,
     STRUCT_PACK(
         xmin := ST_XMin(geom),
         ymin := ST_YMin(geom),
         xmax := ST_XMax(geom),
         ymax := ST_YMax(geom)
-    ) AS bbox".to_string()
+    ) AS bbox"
+                .to_string()
         }
 
         fn is_precompute(&self) -> bool {
@@ -140,19 +141,11 @@ pub mod duckdb {
         }
 
         fn st_transform(&self, geom: &str, srid: &str) -> String {
-            if srid == "4326" {
-                geom.to_string()
-            } else {
-                format!("ST_Transform({geom}, 'EPSG:4326', 'EPSG:{srid}')")
-            }
+            format!("ST_Transform({geom}, 'EPSG:4326', 'EPSG:{srid}')")
         }
 
         fn st_transform_reverse(&self, geom: &str, srid: &str) -> String {
-            if srid == "4326" {
-                geom.to_string()
-            } else {
-                format!("ST_Transform({geom}, 'EPSG:{srid}', 'EPSG:4326')")
-            }
+            format!("ST_Transform({geom}, 'EPSG:{srid}', 'EPSG:4326')")
         }
 
         fn st_asgeojson(&self, geom: &str, _max_decimal_digits: usize) -> String {

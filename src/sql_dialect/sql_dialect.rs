@@ -5,7 +5,7 @@ pub trait SqlDialect: Send + Sync {
 
     fn statement_timeout(&self, timeout: u32) -> Option<String>;
 
-    fn make_geom_fields(&self)  -> String;
+    fn make_geom_fields(&self) -> String;
 
     fn is_precompute(&self) -> bool;
 
@@ -38,6 +38,22 @@ pub trait SqlDialect: Send + Sync {
     fn st_transform(&self, geom: &str, srid: &str) -> String;
 
     fn st_transform_reverse(&self, geom: &str, srid: &str) -> String;
+
+    fn st_buffer(&self, geom: &str, distance: f64) -> String {
+        format!("ST_Buffer({}, {})", geom, distance)
+    }
+
+    fn st_union_agg(&self, geom: &str) -> String {
+        format!("ST_Union({})", geom)
+    }
+
+    fn st_subdivide(&self, geom: &str, max_vertices: usize) -> String {
+        format!("ST_Subdivide({}, {})", geom, max_vertices)
+    }
+
+    fn st_dump_geom(&self, geom: &str) -> String {
+        format!("(ST_Dump({})).geom", geom)
+    }
 
     fn st_asgeojson(&self, geom: &str, max_decimal_digits: usize) -> String;
 }
